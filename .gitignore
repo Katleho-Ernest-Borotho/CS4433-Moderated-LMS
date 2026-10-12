@@ -1,0 +1,62 @@
+# Build and CMake output
+/build/
+/out/
+/cmake-build-*/
+CMakeFiles/
+CMakeCache.txt
+CMakeUserPresets.json
+compile_commands.json
+CTestTestfile.cmake
+Testing/
+
+# Compiled C++ binaries
+*.o
+*.obj
+*.a
+*.lib
+*.exe
+*.dll
+*.so
+*.dylib
+*.pdb
+
+# Qt-generated and IDE files
+*.pro.user*
+moc_*.cpp
+ui_*.h
+qrc_*.cpp
+.vs/
+.idea/
+.vscode/.browse.VC.db*
+
+# Local student data / databases
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+*.db-shm
+*.db-wal
+*.sqlite-shm
+*.sqlite-wal
+
+# Credentials and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Testing and coverage outputs
+/coverage/
+*.gcda
+*.gcno
+*.gcov
+
+# Temporary editor / OS files
+.DS_Store
+Thumbs.db
+*~
+*.swp
+*.swo
