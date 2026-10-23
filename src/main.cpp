@@ -11,6 +11,7 @@
 #include <QWidget>
 
 #include <exception>
+#include <stdexcept>
 
 int main(int argc, char* argv[])
 {
