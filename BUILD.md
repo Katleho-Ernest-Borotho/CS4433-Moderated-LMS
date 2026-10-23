@@ -2,7 +2,7 @@
 
 Development uses MSYS2 UCRT64 with C++17, Qt 6, SQLite, libsodium, CMake, Ninja and GoogleTest.
 
-Run the following commands from the repository folder in MSYS2 UCRT64:
+Run these commands from the repository folder in MSYS2 UCRT64:
 
     cmake -S . -B /c/dev/cs4433-lms-build -G Ninja -DCMAKE_BUILD_TYPE=Debug
     cmake --build /c/dev/cs4433-lms-build
@@ -11,4 +11,4 @@ Run the following commands from the repository folder in MSYS2 UCRT64:
 
 Qt Creator can also open CMakeLists.txt with the CS4433 Qt 6 UCRT64 kit. Use a build directory outside the OneDrive folder.
 
-Current state: the desktop window, four user classes, password hashing wrapper, SQLite connection wrapper and initial unit tests are present. Login and the main LMS features are still to be implemented.
+On its first run, the application creates a SQLite database in the Windows local application-data folder and installs the Week 3 database schema. Later runs use the existing database. No login or academic functions are implemented yet.

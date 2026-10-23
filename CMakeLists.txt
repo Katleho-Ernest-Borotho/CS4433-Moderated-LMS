@@ -11,6 +11,8 @@ find_package(SQLite3 REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(SODIUM REQUIRED IMPORTED_TARGET libsodium)
 
+configure_file(schema/lms_schema.sql ${CMAKE_CURRENT_BINARY_DIR}/lms_schema.sql COPYONLY)
+
 add_library(lms_core
     src/domain/User.cpp
     src/persistence/SqliteDatabase.cpp
