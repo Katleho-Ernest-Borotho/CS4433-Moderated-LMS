@@ -22,4 +22,4 @@ The remaining phase folders will be used as the project progresses.
 - `include/` – Header files
 - `tests/` – Tests
 
-Implementation will be added after the design review.
+Implementation is in progress. Build instructions are in `BUILD.md`.
