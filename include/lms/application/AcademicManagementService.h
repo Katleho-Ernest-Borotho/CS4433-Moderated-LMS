@@ -30,6 +30,13 @@ public:
     void enrolStudent(const Session& actor, std::int64_t studentId,
                       std::int64_t courseId) override;
     std::vector<Course> listVisibleCourses(const Session& actor) const override;
+    Assignment createAssignment(const Session& actor, std::int64_t courseId,
+                                std::string_view title, std::string_view deadlineUtc,
+                                double maximumMark) override;
+    std::vector<Assignment> listCourseAssignments(const Session& actor,
+                                                  std::int64_t courseId) const override;
+    std::vector<UserAccount> listEnrolledStudentsForCourse(const Session& actor,
+                                                            std::int64_t courseId) const override;
 private:
     const IAuthenticationService& authentication_;
     IUserRepository& users_;

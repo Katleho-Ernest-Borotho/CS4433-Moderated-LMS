@@ -30,5 +30,12 @@ public:
     virtual void enrolStudent(const Session& actor, std::int64_t studentId,
                               std::int64_t courseId) = 0;
     virtual std::vector<Course> listVisibleCourses(const Session& actor) const = 0;
+    virtual Assignment createAssignment(const Session& actor, std::int64_t courseId,
+                                        std::string_view title, std::string_view deadlineUtc,
+                                        double maximumMark) = 0;
+    virtual std::vector<Assignment> listCourseAssignments(const Session& actor,
+                                                           std::int64_t courseId) const = 0;
+    virtual std::vector<UserAccount> listEnrolledStudentsForCourse(const Session& actor,
+                                                                    std::int64_t courseId) const = 0;
 };
 } // namespace lms

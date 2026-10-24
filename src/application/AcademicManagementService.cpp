@@ -1,5 +1,8 @@
 #include "lms/application/AcademicManagementService.h"
 #include "lms/application/AccountValidation.h"
+#include "lms/domain/UtcDateTime.h"
+#include <algorithm>
+#include <cmath>
 
 #include <chrono>
 #include <ctime>
@@ -147,5 +150,63 @@ std::vector<Course> AcademicManagementService::listVisibleCourses(const Session&
         return academic_.listAllCourses();
     }
     throw AuthenticationError("Access denied");
+}
+
+Assignment AcademicManagementService::createAssignment(
+    const Session& actor, std::int64_t courseId, std::string_view title,
+    std::string_view deadlineUtc, double maximumMark)
+{
+    authentication_.requireRole(actor, Role::Lecturer);
+    if (!academic_.isLecturerAssigned(actor.userId(), courseId))
+        throw AuthenticationError("You are not assigned to this course");
+    ensureText(title, "Assignment title", 160);
+    validateUtcDateTime(deadlineUtc);
+    if (!std::isfinite(maximumMark) || maximumMark <= 0.0 || maximumMark > 1000000.0)
+        throw std::invalid_argument("Maximum mark must be positive and finite");
+    return academic_.saveAssignment(courseId, title, deadlineUtc, maximumMark);
+}
+
+std::vector<Assignment> AcademicManagementService::listCourseAssignments(
+    const Session& actor, std::int64_t courseId) const
+{
+    switch (actor.role()) {
+    case Role::Lecturer:
+        authentication_.requireRole(actor, Role::Lecturer);
+        if (!academic_.isLecturerAssigned(actor.userId(), courseId))
+            throw AuthenticationError("Course not assigned to lecturer");
+        break;
+    case Role::Student:
+        authentication_.requireRole(actor, Role::Student);
+        if (!academic_.isStudentEnrolled(actor.userId(), courseId))
+            throw AuthenticationError("Student not enrolled in course");
+        break;
+    case Role::Administrator: {
+        authentication_.requireRole(actor, Role::Administrator);
+        const auto all = academic_.listAllCourses();
+        if (std::none_of(all.begin(), all.end(), [courseId](const Course& c) {
+            return c.id == courseId;
+        })) throw std::invalid_argument("Course not found");
+        break;
+    }
+    case Role::HeadOfDepartment:
+        authentication_.requireRole(actor, Role::HeadOfDepartment);
+        {
+            const auto own = academic_.listHoDCourses(actor.userId());
+            if (std::none_of(own.begin(), own.end(), [courseId](const Course& c) {
+                return c.id == courseId;
+            })) throw AuthenticationError("Course outside your department");
+        }
+        break;
+    }
+    return academic_.listCourseAssignments(courseId);
+}
+
+std::vector<UserAccount> AcademicManagementService::listEnrolledStudentsForCourse(
+    const Session& actor, std::int64_t courseId) const
+{
+    authentication_.requireRole(actor, Role::Lecturer);
+    if (!academic_.isLecturerAssigned(actor.userId(), courseId))
+        throw AuthenticationError("Course not assigned to lecturer");
+    return academic_.listEnrolledStudents(courseId);
 }
 } // namespace lms

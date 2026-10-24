@@ -29,6 +29,18 @@ public:
     std::vector<Course> listStudentCourses(std::int64_t studentId) const override;
     std::vector<Course> listLecturerCourses(std::int64_t lecturerId) const override;
     std::vector<Course> listHoDCourses(std::int64_t hodId) const override;
+
+    bool isLecturerAssigned(std::int64_t lecturerId, std::int64_t courseId) const override;
+    bool isStudentEnrolled(std::int64_t studentId, std::int64_t courseId) const override;
+    std::vector<UserAccount> listEnrolledStudents(std::int64_t courseId) const override;
+    Assignment saveAssignment(std::int64_t courseId, std::string_view title,
+                              std::string_view deadlineUtc, double maximumMark) override;
+    std::optional<Assignment> findAssignmentById(std::int64_t assignmentId) const override;
+    std::vector<Assignment> listCourseAssignments(std::int64_t courseId) const override;
+    void saveExtension(std::int64_t assignmentId, std::int64_t studentId,
+                       std::int64_t lecturerId, std::string_view newDeadlineUtc) override;
+    std::string findEffectiveDeadline(std::int64_t assignmentId,
+                                      std::int64_t studentId) const override;
 private:
     SqliteDatabase& database_;
 };
