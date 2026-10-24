@@ -1,28 +1,54 @@
-# Build and run the Moderated LMS
+# Build and test the Moderated LMS
 
-This project uses C++17, Qt 6 Widgets, SQLite, libsodium, CMake, Ninja and GoogleTest. Use **MSYS2 UCRT64** on Windows.
+The Windows development environment uses MSYS2 UCRT64, C++17, Qt 6 Widgets, SQLite, libsodium, CMake, Ninja and GoogleTest.
 
-From the repository directory:
+## Update source code
+
+Run in **Git Bash** (if Git authentication is configured there):
 
 ```bash
+cd /c/Users/borot/OneDrive/Desktop/CS4433-Moderated-LMS
+git switch feature/phase4-implementation
+git pull --ff-only origin feature/phase4-implementation
+```
+
+## Build, test, and run
+
+Run in **MSYS2 UCRT64**, from the repository directory:
+
+```bash
+cd /c/Users/borot/OneDrive/Desktop/CS4433-Moderated-LMS
 cmake -S . -B /c/dev/cs4433-lms-build -G Ninja -DCMAKE_BUILD_TYPE=Debug
 cmake --build /c/dev/cs4433-lms-build
 ctest --test-dir /c/dev/cs4433-lms-build --output-on-failure
 /c/dev/cs4433-lms-build/ModeratedLMS.exe
 ```
 
-Alternatively, open `CMakeLists.txt` in Qt Creator with the `CS4433 Qt 6 UCRT64` kit. Use an out-of-source build directory outside OneDrive.
+Alternatively, open `CMakeLists.txt` in Qt Creator with the `CS4433 Qt 6 UCRT64` kit, using a separate out-of-source build folder.
 
-## First launch
+## Application walkthrough
 
-The program creates `lms.sqlite3` in the Windows local application-data directory for CS4433/ModeratedLMS, then installs the unchanged 12-table Week 3 schema. If no users exist, it displays an initial administrator setup form. Choose your own username (3-40 letters, digits, dots, dashes or underscores) and password (at least 12 UTF-8 bytes). Re-enter the password to confirm. There are **no hard-coded or default credentials**. The account stores only a salted libsodium password hash.
+On first launch, the application creates `lms.sqlite3` inside the Windows local application-data directory for `CS4433/ModeratedLMS` and initialises the twelve-table Week 3 database schema. It does **not** reset or overwrite existing users after an update.
 
-After creating the administrator, log in using those credentials. A signed-in administrator sees a role-labelled placeholder screen and can log out. Student, Lecturer and Head of Department accounts and their functional dashboards will be implemented in later work; do not mistake the placeholder for a complete LMS.
+If no user exists, create the first administrator with a unique username and password. Usernames must contain 3 to 40 ASCII letters/digits/dots/dashes/underscores. Passwords must contain 12 to 1024 UTF-8 bytes. Enter your own credentials; the program has no default password.
 
-## Security and testing
+Log in as the administrator. You can now:
 
-The GUI sends credentials to `AuthenticationService`, which depends on `IUserRepository` and `IPasswordHasher`. `SQLiteRecordRepository` performs prepared SQLite queries. The account can be bootstrapped only while there are no users, checked inside an immediate SQL transaction. Inactive accounts and incorrect credentials are refused. Services re-check an account before performing role-restricted actions. Passwords are never stored as plaintext in the database.
+- Create Student, Lecturer, Head of Department or additional Administrator accounts.
+- Enter and confirm each user's initial password.
+- View account IDs, usernames, roles and active/inactive status.
+- Refresh the list of users.
+- Select an account and deactivate it after confirming the action.
+- Log out, and test logging in as an ordinary account.
 
-The CTest suite includes 5 initial tests plus 8 authentication tests: missing credentials, wrong password, protected roles, inactive account/session, duplicate setup, credential validation and SQL-injection-style input.
+Ordinary users do not see the administrative user-management panel, and the service enforces this restriction even if the GUI is bypassed. The application prevents administrator self-deactivation and deactivation of the last active administrator. Deactivated users cannot log in. Account records remain in SQLite rather than being deleted.
 
-This is an **implementation checkpoint**, not a finished product. Academic administration, course authorisation, assignments, submissions, marking, moderation and release remain to be built and tested. Do not use real student records until those functions and the final security review are complete.
+Do **not** share real passwords in screenshots or messages. Use temporary demonstration accounts only until backup, password reset and other production requirements have been implemented.
+
+## Security and tests
+
+The GUI calls `AcademicManagementService` and `AuthenticationService`, which use `IUserRepository` and `IPasswordHasher`. `SQLiteRecordRepository` performs parameterised SQLite operations and wraps writes in transactions. Only salted password hashes are persisted, and the user-list API never exposes them.
+
+There are 19 GoogleTest test cases covering the initial domain and schema, first administrator setup, login, roles, invalid credentials, inactive accounts, SQL-injection-style input, user creation, duplicate usernames and account deactivation. Run CTest to verify the suite on the development machine.
+
+The administrator user-management screen is a **checkpoint**, not a completed LMS. User editing, password reset, departmental assignment, enrolment, course management, submissions, marking, moderation and final result release remain to be implemented and tested.
