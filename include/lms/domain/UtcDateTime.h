@@ -1,4 +1,6 @@
 #pragma once
+#include <initializer_list>
+#include <cstddef>
 #include <stdexcept>
 #include <string_view>
 
