@@ -4,20 +4,17 @@
 #include <string>
 
 namespace lms {
-
 class SqliteDatabase {
 public:
     explicit SqliteDatabase(const std::string& filePath);
     ~SqliteDatabase();
-
     SqliteDatabase(const SqliteDatabase&) = delete;
     SqliteDatabase& operator=(const SqliteDatabase&) = delete;
-
     bool foreignKeysEnabled() const;
     void initializeSchemaFromFile(const std::string& schemaFile);
-
+    // Connection is exposed only to the persistence adapter, not GUI/services.
+    sqlite3* connection() const noexcept { return connection_; }
 private:
     sqlite3* connection_ = nullptr;
 };
-
 } // namespace lms

@@ -1,12 +1,12 @@
 #pragma once
-#include <string>
-#include <string_view>
+
+#include "lms/security/IPasswordHasher.h"
 
 namespace lms {
-class SodiumPasswordHasher {
+class SodiumPasswordHasher final : public IPasswordHasher {
 public:
     SodiumPasswordHasher();
-    std::string hash(std::string_view password) const;
-    bool verify(std::string_view password, std::string_view storedHash) const;
+    std::string hash(std::string_view password) const override;
+    bool verify(std::string_view password, std::string_view storedHash) const override;
 };
 } // namespace lms
