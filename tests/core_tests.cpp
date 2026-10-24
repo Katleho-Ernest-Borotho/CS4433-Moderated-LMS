@@ -3,6 +3,7 @@
 #include "lms/application/BootstrapService.h"
 #include "lms/application/SubmissionManagementService.h"
 #include "lms/application/MarkingService.h"
+#include "lms/application/ModerationService.h"
 #include "lms/domain/LatePenaltyPolicy.h"
 #include "lms/domain/UtcDateTime.h"
 #include "lms/domain/User.h"
@@ -1058,4 +1059,233 @@ TEST_F(MarkingTests, MissingSubmissionCannotBeMarked)
     initialise();
     EXPECT_THROW(marking.mark(lecturer(),999999,50,"No submission",""),
                  std::invalid_argument);
+}
+
+
+class ModerationTests : public MarkingTests {
+protected:
+    lms::ModerationService moderation{authentication,users,penalty,store};
+
+    lms::Session hod()
+    {
+        return authentication.logIn("hod1","DepartmentPass123!");
+    }
+    std::int64_t makeDepartmentHod()
+    {
+        const auto admin=authentication.logIn("admin1","LongSecretPassword123!");
+        const auto dept=management.listDepartments(admin).at(0);
+        const auto account=management.createUser(admin,"hod1","DepartmentPass123!",
+                                                 lms::Role::HeadOfDepartment);
+        management.assignHoD(admin,account.id,dept.id);
+        return account.id;
+    }
+
+    lms::SubmissionVersion markedPastDue()
+    {
+        initialise();
+        makeDepartmentHod();
+        const auto assignment=makeAssignment("2000-01-01T12:00:00Z");
+        const auto student=studentSession();
+        const auto version=users.saveVersion(student.userId(),assignment.id,
+            "Well researched assignment","","2000-01-01T12:00:01Z");
+        const auto assessment=marking.mark(lecturer(),version.submissionId,75,
+                                           "Clear explanation","");
+        EXPECT_FALSE(assessment.approved);
+        return version;
+    }
+};
+
+TEST_F(ModerationTests, HoDSeesOnlyAssignedDepartmentProvisionalResults)
+{
+    const auto submission=markedPastDue();
+    const auto pending=moderation.listDepartmentResults(hod());
+    ASSERT_EQ(pending.size(),1U);
+    EXPECT_EQ(pending.at(0).submissionId,submission.submissionId);
+    EXPECT_EQ(pending.at(0).submittedText,"Well researched assignment");
+    EXPECT_FALSE(pending.at(0).approved);
+    EXPECT_EQ(pending.at(0).earnedMark,75);
+    EXPECT_EQ(pending.at(0).penaltyMark,10);
+    EXPECT_EQ(pending.at(0).finalMark,65);
+}
+
+TEST_F(ModerationTests, ApprovalDoesNotReleasePrivateStudentMarks)
+{
+    const auto version=markedPastDue();
+    EXPECT_TRUE(moderation.getReleasedResults(studentSession()).empty());
+    moderation.moderate(hod(),version.submissionId,std::nullopt,"");
+    EXPECT_TRUE(moderation.getReleasedResults(studentSession()).empty());
+    const auto result=users.findResult(version.submissionId);
+    ASSERT_TRUE(result.has_value());
+    EXPECT_TRUE(result->approved);
+    EXPECT_TRUE(result->releasedAtUtc.empty());
+    EXPECT_EQ(users.findFor(studentSession().userId(),version.submissionId>0?
+        users.findMarkableSubmission(version.submissionId)->assignmentId:0)->state,"Moderated");
+}
+
+TEST_F(ModerationTests, HoDApprovalThenSeparateReleaseMakesMarkVisibleToOnlyOwnStudent)
+{
+    const auto version=markedPastDue();
+    moderation.moderate(hod(),version.submissionId,std::nullopt,"");
+    moderation.release(hod(),version.submissionId);
+    const auto released=moderation.getReleasedResults(studentSession());
+    ASSERT_EQ(released.size(),1U);
+    EXPECT_DOUBLE_EQ(released[0].earnedMark,75);
+    EXPECT_DOUBLE_EQ(released[0].penaltyMark,10);
+    EXPECT_DOUBLE_EQ(released[0].finalMark,65);
+    EXPECT_EQ(released[0].feedback,"Clear explanation");
+    EXPECT_FALSE(released[0].releasedAtUtc.empty());
+    EXPECT_TRUE(moderation.listDepartmentResults(hod()).empty());
+    const auto other=authentication.logIn("student2","StudentPassword456!");
+    EXPECT_TRUE(moderation.getReleasedResults(other).empty());
+}
+
+TEST_F(ModerationTests, ReleasingWithoutModerationIsRejected)
+{
+    const auto version=markedPastDue();
+    EXPECT_THROW(moderation.release(hod(),version.submissionId),std::invalid_argument);
+    EXPECT_TRUE(moderation.getReleasedResults(studentSession()).empty());
+}
+
+TEST_F(ModerationTests, SecondReleaseAndSecondApprovalAreRejected)
+{
+    const auto version=markedPastDue();
+    moderation.moderate(hod(),version.submissionId,std::nullopt,"");
+    EXPECT_THROW(moderation.moderate(hod(),version.submissionId,std::nullopt,""),
+                 std::invalid_argument);
+    moderation.release(hod(),version.submissionId);
+    EXPECT_THROW(moderation.release(hod(),version.submissionId),lms::AuthenticationError);
+    EXPECT_EQ(moderation.getReleasedResults(studentSession()).size(),1U);
+}
+
+TEST_F(ModerationTests, HoDAdjustingEarnedMarkGeneratesEarnedAndFinalAudit)
+{
+    const auto version=markedPastDue();
+    moderation.moderate(hod(),version.submissionId,80.0,"Reviewed calculation");
+    const auto saved=users.findResult(version.submissionId);
+    ASSERT_TRUE(saved.has_value());
+    EXPECT_DOUBLE_EQ(saved->earnedMark,80);
+    EXPECT_DOUBLE_EQ(saved->penaltyMark,10);
+    EXPECT_DOUBLE_EQ(saved->finalMark,70);
+    EXPECT_TRUE(saved->approved);
+    const auto audits=users.listMarkAudits(saved->resultId);
+    ASSERT_EQ(audits.size(),2U);
+    EXPECT_EQ(audits[0].field,"earned_mark");
+    EXPECT_EQ(audits[1].field,"final_mark");
+    EXPECT_DOUBLE_EQ(audits[0].oldValue,75);
+    EXPECT_DOUBLE_EQ(audits[0].newValue,80);
+    EXPECT_EQ(audits[0].actorId,hod().userId());
+    EXPECT_EQ(audits[0].reason,"Reviewed calculation");
+}
+
+TEST_F(ModerationTests, AdjustedMarksRequireReasonAndRollbackUnapproved)
+{
+    const auto version=markedPastDue();
+    EXPECT_THROW(moderation.moderate(hod(),version.submissionId,80.0," "),
+                 std::invalid_argument);
+    const auto existing=users.findResult(version.submissionId);
+    ASSERT_TRUE(existing.has_value());
+    EXPECT_FALSE(existing->approved);
+    EXPECT_DOUBLE_EQ(existing->earnedMark,75);
+    EXPECT_TRUE(users.listMarkAudits(existing->resultId).empty());
+}
+
+TEST_F(ModerationTests, HoDCannotAdjustOutsideAssignmentMaximum)
+{
+    const auto version=markedPastDue();
+    EXPECT_THROW(moderation.moderate(hod(),version.submissionId,101.0,"Revised"),
+                 std::invalid_argument);
+    EXPECT_THROW(moderation.moderate(hod(),version.submissionId,-2.0,"Revised"),
+                 std::invalid_argument);
+    EXPECT_FALSE(users.findResult(version.submissionId)->approved);
+}
+
+TEST_F(ModerationTests, AnotherDepartmentHoDCannotSeeApproveReleaseOrReadAttachments)
+{
+    const auto version=markedPastDue();
+    const auto admin=authentication.logIn("admin1","LongSecretPassword123!");
+    const auto dep=management.createDepartment(admin,"Another Department");
+    const auto otherHod=management.createUser(admin,"hod2","DepartmentPass456!",
+                                              lms::Role::HeadOfDepartment);
+    management.assignHoD(admin,otherHod.id,dep.id);
+    const auto other=authentication.logIn("hod2","DepartmentPass456!");
+    EXPECT_TRUE(moderation.listDepartmentResults(other).empty());
+    EXPECT_THROW(moderation.moderate(other,version.submissionId,std::nullopt,""),
+                 lms::AuthenticationError);
+    EXPECT_THROW(moderation.release(other,version.submissionId),lms::AuthenticationError);
+    EXPECT_THROW(moderation.readLatestAttachment(other,version.submissionId),
+                 lms::AuthenticationError);
+}
+
+TEST_F(ModerationTests, StudentsLecturersAndAdminCannotModerateOrRelease)
+{
+    const auto version=markedPastDue();
+    const auto admin=authentication.logIn("admin1","LongSecretPassword123!");
+    EXPECT_THROW(moderation.listDepartmentResults(admin),lms::AuthenticationError);
+    EXPECT_THROW(moderation.moderate(studentSession(),version.submissionId,std::nullopt,""),
+                 lms::AuthenticationError);
+    EXPECT_THROW(moderation.release(lecturer(),version.submissionId),
+                 lms::AuthenticationError);
+    EXPECT_THROW(moderation.getReleasedResults(hod()),lms::AuthenticationError);
+}
+
+TEST_F(ModerationTests, FutureEffectiveDeadlineBlocksApprovalAndRelease)
+{
+    initialise();
+    makeDepartmentHod();
+    const auto assignment=makeAssignment("2030-11-01T12:00:00Z");
+    const auto version=submissionService.submit(studentSession(),assignment.id,{"Early submission",""});
+    marking.mark(lecturer(),version.submissionId,70,"Good","");
+    EXPECT_THROW(moderation.moderate(hod(),version.submissionId,std::nullopt,""),
+                 std::invalid_argument);
+    EXPECT_FALSE(users.findResult(version.submissionId)->approved);
+    EXPECT_TRUE(moderation.getReleasedResults(studentSession()).empty());
+    EXPECT_THROW(moderation.release(hod(),version.submissionId),
+                 std::invalid_argument);
+}
+
+TEST_F(ModerationTests, NewerUnmarkedVersionBlocksApproval)
+{
+    initialise();
+    makeDepartmentHod();
+    const auto assignment=makeAssignment("2000-01-01T12:00:00Z");
+    const auto first=users.saveVersion(studentSession().userId(),assignment.id,
+        "draft","","2000-01-01T10:00:00Z");
+    marking.mark(lecturer(),first.submissionId,75,"Draft graded","");
+    const auto second=users.saveVersion(studentSession().userId(),assignment.id,
+        "revision","","2000-01-01T11:00:00Z");
+    EXPECT_NE(first.id,second.id);
+    EXPECT_THROW(moderation.moderate(hod(),first.submissionId,std::nullopt,""),
+                 std::invalid_argument);
+    EXPECT_FALSE(users.findResult(first.submissionId)->approved);
+    marking.mark(lecturer(),first.submissionId,80,
+                 "New version marked","Student resubmitted");
+    EXPECT_NO_THROW(moderation.moderate(hod(),first.submissionId,std::nullopt,""));
+}
+
+TEST_F(ModerationTests, LecturerCannotEditAnApprovedResult)
+{
+    const auto version=markedPastDue();
+    moderation.moderate(hod(),version.submissionId,std::nullopt,"");
+    EXPECT_THROW(marking.mark(lecturer(),version.submissionId,82,
+                 "Trying to modify approved result","Wrong"),
+                 std::invalid_argument);
+}
+
+TEST_F(ModerationTests, HoDCanReviewOnlyAuthorisedAttachment)
+{
+    initialise();
+    makeDepartmentHod();
+    const auto assignment=makeAssignment("2000-01-01T12:00:00Z");
+    const auto file=testFilesDir/"review.txt";
+    {
+        std::ofstream stream(file,std::ios::binary);
+        stream<<"Assessment attachment";
+    }
+    const auto staged=store.stage(file.string());
+    const auto stored=store.commit(staged);
+    const auto version=users.saveVersion(studentSession().userId(),assignment.id,
+        "",stored.token,"2000-01-01T12:00:01Z");
+    marking.mark(lecturer(),version.submissionId,75,"File assessed","");
+    EXPECT_EQ(moderation.readLatestAttachment(hod(),version.submissionId),
+              "Assessment attachment");
 }
