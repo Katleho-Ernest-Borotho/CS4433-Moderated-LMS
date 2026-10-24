@@ -1118,8 +1118,10 @@ TEST_F(ModerationTests, ApprovalDoesNotReleasePrivateStudentMarks)
     ASSERT_TRUE(result.has_value());
     EXPECT_TRUE(result->approved);
     EXPECT_TRUE(result->releasedAtUtc.empty());
-    EXPECT_EQ(users.findFor(studentSession().userId(),version.submissionId>0?
-        users.findMarkableSubmission(version.submissionId)->assignmentId:0)->state,"Moderated");
+    const auto latest=users.findMarkableSubmission(version.submissionId);
+    ASSERT_TRUE(latest.has_value());
+    EXPECT_EQ(users.findFor(studentSession().userId(),latest->assignmentId)->state,
+              "Moderated");
 }
 
 TEST_F(ModerationTests, HoDApprovalThenSeparateReleaseMakesMarkVisibleToOnlyOwnStudent)
@@ -1288,4 +1290,36 @@ TEST_F(ModerationTests, HoDCanReviewOnlyAuthorisedAttachment)
     marking.mark(lecturer(),version.submissionId,75,"File assessed","");
     EXPECT_EQ(moderation.readLatestAttachment(hod(),version.submissionId),
               "Assessment attachment");
+}
+
+
+TEST_F(ModerationTests, EffectiveExtensionPreventsPrematureApproval)
+{
+    const auto version=markedPastDue();
+    submissions.grantExtension(lecturer(),
+        users.findMarkableSubmission(version.submissionId)->assignmentId,
+        studentSession().userId(),"2030-11-01T12:00:00Z");
+    EXPECT_THROW(moderation.moderate(hod(),version.submissionId,std::nullopt,""),
+                 std::invalid_argument);
+    EXPECT_FALSE(users.findResult(version.submissionId)->approved);
+    EXPECT_TRUE(moderation.getReleasedResults(studentSession()).empty());
+}
+
+TEST_F(ModerationTests, FailedAuditInsertRollsBackHoDMarkAndApproval)
+{
+    const auto version=markedPastDue();
+    ASSERT_EQ(sqlite3_exec(database.connection(),
+        "CREATE TRIGGER reject_mark_audit BEFORE INSERT ON mark_change_audits "
+        "BEGIN SELECT RAISE(ABORT, 'audit storage unavailable'); END;",
+        nullptr,nullptr,nullptr),SQLITE_OK);
+    EXPECT_THROW(moderation.moderate(hod(),version.submissionId,80.0,
+                                   "Correction requires audit"),std::runtime_error);
+    const auto current=users.findResult(version.submissionId);
+    ASSERT_TRUE(current.has_value());
+    EXPECT_DOUBLE_EQ(current->earnedMark,75);
+    EXPECT_DOUBLE_EQ(current->finalMark,65);
+    EXPECT_FALSE(current->approved);
+    EXPECT_TRUE(users.listMarkAudits(current->resultId).empty());
+    const auto submission=users.findMarkableSubmission(version.submissionId);
+    EXPECT_EQ(submission->state,"Marked");
 }
