@@ -1,15 +1,20 @@
 #pragma once
 #include "lms/application/IAuthenticationService.h"
+#include "lms/domain/SubmissionRecords.h"
+#include <vector>
 #include <cstdint>
 #include <string>
 #include <string_view>
 
 namespace lms {
-// Partial Week 3 submission-service contract: extensions and deadlines only.
-// Submission content and version operations will be implemented next.
+// Supports first submission, versioned replacements, and individual extensions.
 class ISubmissionService {
 public:
     virtual ~ISubmissionService() = default;
+    virtual SubmissionVersion submit(const Session& actor, std::int64_t assignmentId,
+                                      const SubmissionContent& content) = 0;
+    virtual std::vector<SubmissionVersion> listMyVersions(const Session& actor,
+                                                           std::int64_t assignmentId) const = 0;
     virtual void grantExtension(const Session& actor, std::int64_t assignmentId,
                                 std::int64_t studentId, std::string_view newDeadlineUtc) = 0;
     virtual std::string effectiveDeadline(const Session& actor, std::int64_t assignmentId,

@@ -1,11 +1,12 @@
 #pragma once
 
 #include "lms/persistence/IAcademicRepository.h"
+#include "lms/persistence/ISubmissionRepository.h"
 #include "lms/persistence/IUserRepository.h"
 #include "lms/persistence/SqliteDatabase.h"
 
 namespace lms {
-class SQLiteRecordRepository final : public IUserRepository, public IAcademicRepository {
+class SQLiteRecordRepository final : public IUserRepository, public IAcademicRepository, public ISubmissionRepository {
 public:
     explicit SQLiteRecordRepository(SqliteDatabase& database);
     std::unique_ptr<User> findByUsername(std::string_view username) const override;
@@ -41,6 +42,13 @@ public:
                        std::int64_t lecturerId, std::string_view newDeadlineUtc) override;
     std::string findEffectiveDeadline(std::int64_t assignmentId,
                                       std::int64_t studentId) const override;
+    std::optional<SubmissionSummary> findFor(std::int64_t studentId,
+                                              std::int64_t assignmentId) const override;
+    SubmissionVersion saveVersion(std::int64_t studentId, std::int64_t assignmentId,
+                                   std::string_view text, std::string_view attachmentRef,
+                                   std::string_view submittedAtUtc) override;
+    std::vector<SubmissionVersion> listVersions(std::int64_t studentId,
+                                                std::int64_t assignmentId) const override;
 private:
     SqliteDatabase& database_;
 };
