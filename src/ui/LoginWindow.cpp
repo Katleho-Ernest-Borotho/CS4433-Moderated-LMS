@@ -1,5 +1,6 @@
 #include "lms/ui/LoginWindow.h"
 
+#include <QFont>
 #include <QFormLayout>
 #include <QLabel>
 #include <QLineEdit>
