@@ -14,6 +14,7 @@
 #include <QMessageBox>
 #include <QPlainTextEdit>
 #include <QPushButton>
+#include <QScrollArea>
 #include <QSignalBlocker>
 #include <QTableWidget>
 #include <QTableWidgetItem>
@@ -42,7 +43,13 @@ MarkingPanel::MarkingPanel(IAcademicManagementService& academic,
     IMarkingService& marking,const std::optional<Session>& session,QWidget* parent)
     : QWidget(parent),academic_(academic),marking_(marking),session_(session)
 {
-    auto* layout=new QVBoxLayout(this);
+    auto* outer=new QVBoxLayout(this);
+    auto* scroll=new QScrollArea(this);
+    scroll->setWidgetResizable(true);
+    outer->addWidget(scroll);
+    auto* content=new QWidget(scroll);
+    scroll->setWidget(content);
+    auto* layout=new QVBoxLayout(content);
     auto* selectionForm=new QFormLayout;
     courses_=new QComboBox(this);
     assignments_=new QComboBox(this);
