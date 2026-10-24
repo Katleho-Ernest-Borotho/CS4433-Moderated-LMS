@@ -3,6 +3,7 @@
 #include "lms/application/BootstrapService.h"
 #include "lms/application/SubmissionManagementService.h"
 #include "lms/persistence/SQLiteRecordRepository.h"
+#include "lms/persistence/LocalSubmissionContentStore.h"
 #include "lms/persistence/SqliteDatabase.h"
 #include "lms/security/SodiumPasswordHasher.h"
 #include "lms/ui/LoginWindow.h"
@@ -39,7 +40,8 @@ int main(int argc, char* argv[])
         lms::BootstrapService bootstrap(users, passwords);
         lms::AcademicManagementService academic(authentication, users, users, passwords);
 
-        lms::SubmissionManagementService submissions(authentication, users);
+        lms::LocalSubmissionContentStore files((dataDirectory + "/attachments").toStdString());
+        lms::SubmissionManagementService submissions(authentication, users, users, files);
         lms::LoginWindow window(authentication, bootstrap, academic, submissions);
         window.show();
         return application.exec();
