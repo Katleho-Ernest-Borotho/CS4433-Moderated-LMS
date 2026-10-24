@@ -5,6 +5,7 @@
 #include "lms/application/IAcademicManagementService.h"
 #include "lms/application/ISubmissionService.h"
 #include "lms/application/IMarkingService.h"
+#include "lms/application/IModerationService.h"
 
 #include <QMainWindow>
 #include <optional>
@@ -21,11 +22,12 @@ namespace lms {
 class AcademicPanel;
 class AssignmentPanel;
 class MarkingPanel;
+class ResultsPanel;
 class LoginWindow final : public QMainWindow {
 public:
     LoginWindow(IAuthenticationService& authentication, BootstrapService& bootstrap,
                 IAcademicManagementService& accounts, ISubmissionService& submissions,
-                IMarkingService& marking);
+                IMarkingService& marking, IModerationService& moderation);
 
 private:
     QWidget* createSetupPage();
@@ -45,6 +47,7 @@ private:
     IAcademicManagementService& accounts_;
     ISubmissionService& submissions_;
     IMarkingService& marking_;
+    IModerationService& moderation_;
     QStackedWidget* pages_ = nullptr;
     QWidget* setupPage_ = nullptr;
     QWidget* loginPage_ = nullptr;
@@ -55,6 +58,7 @@ private:
     QTabWidget* learningTabs_ = nullptr;
     AssignmentPanel* assignmentsPanel_ = nullptr;
     MarkingPanel* markingPanel_ = nullptr;
+    ResultsPanel* resultsPanel_ = nullptr;
     QTableWidget* myCoursesTable_ = nullptr;
     QLineEdit* setupUsername_ = nullptr;
     QLineEdit* setupPassword_ = nullptr;
