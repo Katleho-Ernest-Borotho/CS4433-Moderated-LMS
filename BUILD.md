@@ -1,10 +1,10 @@
-# Build and test the Moderated LMS
+# Building and Testing the Moderated LMS
 
-The Windows development environment uses MSYS2 UCRT64, C++17, Qt 6 Widgets, SQLite, libsodium, CMake, Ninja and GoogleTest.
+Windows development: MSYS2 UCRT64, C++17, Qt 6 Widgets, SQLite, libsodium, CMake, Ninja, GoogleTest.
 
-## Update source code
+## Update the project in Git Bash
 
-Run in **Git Bash** (where GitHub browser authentication is configured):
+Close the running LMS before rebuilding.
 
 ```bash
 cd /c/Users/borot/OneDrive/Desktop/CS4433-Moderated-LMS
@@ -12,9 +12,7 @@ git switch feature/phase4-implementation
 git pull --ff-only origin feature/phase4-implementation
 ```
 
-## Build, test and run
-
-Run in **MSYS2 UCRT64**, from the repository directory:
+## Build, test and run in MSYS2 UCRT64
 
 ```bash
 cd /c/Users/borot/OneDrive/Desktop/CS4433-Moderated-LMS
@@ -24,29 +22,40 @@ ctest --test-dir /c/dev/cs4433-lms-build --output-on-failure
 /c/dev/cs4433-lms-build/ModeratedLMS.exe
 ```
 
-Do not paste terminal prompts or output lines into the shell. The Qt Creator IDE can also open `CMakeLists.txt` with the `CS4433 Qt 6 UCRT64` kit.
+Alternatively, open CMakeLists.txt from Qt Creator using the CS4433 Qt 6 UCRT64 kit. Use a build folder outside the OneDrive repository.
 
-## Persistence and first launch
+## Local storage
 
-The program stores the local `lms.sqlite3` in the Windows application-data folder for `CS4433/ModeratedLMS` and uses the approved twelve-table Week 3 SQLite schema. Existing users and enrolments persist between launches. Rebuilding the project does not reset the database.
+The program keeps its database under the Windows local application-data directory for CS4433/ModeratedLMS. Updating the program does **not** remove accounts, courses, enrolments or existing assignments. The approved twelve-table SQLite schema is unchanged in this checkpoint. The application is offline.
 
-If there are no users, create an administrator. The program contains no default passwords. Usernames must contain 3–40 ASCII letters/digits/dots/dashes/underscores, and initial passwords must be at least 12 UTF-8 bytes. The administrator creates ordinary accounts on the User Management tab; only salted hashes are persisted.
+## Checkpoint walkthrough — two new features together
 
-## New academic management workflow
+### Feature A: Lecturer creates assignments (FR-08)
 
-After logging in as an Administrator:
+1. Sign in as Administrator. In **User management**, create a temporary Lecturer account if none exists.
+2. In **Academic management**, assign this lecturer to the existing CS4433 course. The student must already be enrolled in that course.
+3. Log out and log in as the Lecturer.
+4. Open **Assignments and extensions**, choose CS4433.
+5. Fill in a title such as "Lab 1", select the deadline using local date/time, set a maximum mark such as 100, and choose **Create assignment**.
+6. Confirm that the new assignment appears in the list. The chosen time is stored in SQLite as UTC; the application uses the system's local time zone in its date editors.
 
-1. Open **Academic management**.
-2. Create a department (for example, `Computer Science`).
-3. Create a course associated with the department (for example, `CS4433` / `Software Engineering`).
-4. In the **User management** tab, create an active Student account and an active Lecturer account if needed.
-5. Return to **Academic management**, press **Refresh departments, courses and users** when needed, then enrol the student and assign the lecturer to the course. Optional: create a HoD account and assign the HoD to the department.
-6. Log out, log in as the Student, and verify only enrolled courses appear. Log in as the Lecturer to verify only assigned courses appear. A HoD only sees courses for the HoD's assigned department.
+### Feature B: Individual deadline extension (FR-09)
 
-Administrators can rename a department and edit a course title. Changes and allocations persist in SQLite. Duplicate course codes, duplicate department names, duplicate allocation records and wrong-role assignments are rejected. Only active users of the appropriate roles can be allocated. Service-layer authorisation prevents students from using administrator operations even when GUI controls are not shown.
+1. While logged in as that Lecturer, choose the newly created assignment and the enrolled Student.
+2. Observe the student's current effective deadline.
+3. Choose a later new deadline and select **Grant individual extension**.
+4. Confirm that the effective deadline changes. Extensions are attached to one Student and one Assignment; no whole-class extension is created.
+5. Log out and log in as that Student. Open **Assignments and extensions**. The Student should see the assignment with both the original deadline and the individual effective deadline.
+6. Check that another unenrolled student cannot see the assignment and that an unassigned lecturer cannot edit it.
 
-## Automated tests and scope
+Repeat these tests after restarting the application to verify persistence.
 
-The GoogleTest suite contains 28 test cases, including database creation/persistence, authentication, user management, department/course CRUD, role-based allocations, and role-scoped course visibility. Run CTest after each update and share the error output if the build or tests fail.
+## Security and business rules
 
-This is **not** the full LMS yet. The assignment creation screen, extensions, typed/file submissions, resubmission, penalty calculation, marking, moderation, release and mark-change audits are planned for later implementation. Account update/password reset and some additional administrative editing controls are also pending. Do not use real student records until backup and security review are complete.
+The GUI calls application services rather than using SQL. An authenticated Lecturer may create assignments and grant extensions only for courses assigned to that Lecturer. A grant applies only to an active, enrolled Student. An extension must be later than the student's current effective deadline; it cannot shorten the deadline. Inputs use canonical UTC YYYY-MM-DDTHH:MM:SSZ format and validation checks the calendar date. The maximum mark must be positive and finite.
+
+Students can read only assignments in courses they are enrolled in, and can see only their own effective deadlines. The SQLite layer uses parameterised queries and transactions. There are now 39 registered GoogleTest cases covering previous features and the new assignment/extension permissions and boundaries.
+
+## Implementation status
+
+The two new features and tests have been committed, but they still require a successful build and test run on the development laptop. Submissions, resubmission rules, late penalties, marking, moderation, mark-change audit and release of results are **not** implemented yet. Do not use real student information before backup, recovery and full security testing are complete.
