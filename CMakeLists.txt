@@ -18,10 +18,12 @@ add_library(lms_core
     src/persistence/SqliteDatabase.cpp
     src/persistence/SQLiteRecordRepository.cpp
     src/persistence/SQLiteAcademicRepository.cpp
+    src/persistence/SQLiteAssignmentsRepository.cpp
     src/security/SodiumPasswordHasher.cpp
     src/application/AuthenticationService.cpp
     src/application/BootstrapService.cpp
     src/application/AcademicManagementService.cpp
+    src/application/SubmissionManagementService.cpp
 )
 target_include_directories(lms_core PUBLIC include)
 target_link_libraries(lms_core PUBLIC SQLite::SQLite3 PkgConfig::SODIUM)
