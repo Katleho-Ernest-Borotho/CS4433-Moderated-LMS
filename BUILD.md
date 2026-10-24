@@ -4,7 +4,7 @@ The Windows development environment uses MSYS2 UCRT64, C++17, Qt 6 Widgets, SQLi
 
 ## Update source code
 
-Run in **Git Bash** (if Git authentication is configured there):
+Run in **Git Bash** (where GitHub browser authentication is configured):
 
 ```bash
 cd /c/Users/borot/OneDrive/Desktop/CS4433-Moderated-LMS
@@ -12,7 +12,7 @@ git switch feature/phase4-implementation
 git pull --ff-only origin feature/phase4-implementation
 ```
 
-## Build, test, and run
+## Build, test and run
 
 Run in **MSYS2 UCRT64**, from the repository directory:
 
@@ -24,31 +24,29 @@ ctest --test-dir /c/dev/cs4433-lms-build --output-on-failure
 /c/dev/cs4433-lms-build/ModeratedLMS.exe
 ```
 
-Alternatively, open `CMakeLists.txt` in Qt Creator with the `CS4433 Qt 6 UCRT64` kit, using a separate out-of-source build folder.
+Do not paste terminal prompts or output lines into the shell. The Qt Creator IDE can also open `CMakeLists.txt` with the `CS4433 Qt 6 UCRT64` kit.
 
-## Application walkthrough
+## Persistence and first launch
 
-On first launch, the application creates `lms.sqlite3` inside the Windows local application-data directory for `CS4433/ModeratedLMS` and initialises the twelve-table Week 3 database schema. It does **not** reset or overwrite existing users after an update.
+The program stores the local `lms.sqlite3` in the Windows application-data folder for `CS4433/ModeratedLMS` and uses the approved twelve-table Week 3 SQLite schema. Existing users and enrolments persist between launches. Rebuilding the project does not reset the database.
 
-If no user exists, create the first administrator with a unique username and password. Usernames must contain 3 to 40 ASCII letters/digits/dots/dashes/underscores. Passwords must contain 12 to 1024 UTF-8 bytes. Enter your own credentials; the program has no default password.
+If there are no users, create an administrator. The program contains no default passwords. Usernames must contain 3–40 ASCII letters/digits/dots/dashes/underscores, and initial passwords must be at least 12 UTF-8 bytes. The administrator creates ordinary accounts on the User Management tab; only salted hashes are persisted.
 
-Log in as the administrator. You can now:
+## New academic management workflow
 
-- Create Student, Lecturer, Head of Department or additional Administrator accounts.
-- Enter and confirm each user's initial password.
-- View account IDs, usernames, roles and active/inactive status.
-- Refresh the list of users.
-- Select an account and deactivate it after confirming the action.
-- Log out, and test logging in as an ordinary account.
+After logging in as an Administrator:
 
-Ordinary users do not see the administrative user-management panel, and the service enforces this restriction even if the GUI is bypassed. The application prevents administrator self-deactivation and deactivation of the last active administrator. Deactivated users cannot log in. Account records remain in SQLite rather than being deleted.
+1. Open **Academic management**.
+2. Create a department (for example, `Computer Science`).
+3. Create a course associated with the department (for example, `CS4433` / `Software Engineering`).
+4. In the **User management** tab, create an active Student account and an active Lecturer account if needed.
+5. Return to **Academic management**, press **Refresh departments, courses and users** when needed, then enrol the student and assign the lecturer to the course. Optional: create a HoD account and assign the HoD to the department.
+6. Log out, log in as the Student, and verify only enrolled courses appear. Log in as the Lecturer to verify only assigned courses appear. A HoD only sees courses for the HoD's assigned department.
 
-Do **not** share real passwords in screenshots or messages. Use temporary demonstration accounts only until backup, password reset and other production requirements have been implemented.
+Administrators can rename a department and edit a course title. Changes and allocations persist in SQLite. Duplicate course codes, duplicate department names, duplicate allocation records and wrong-role assignments are rejected. Only active users of the appropriate roles can be allocated. Service-layer authorisation prevents students from using administrator operations even when GUI controls are not shown.
 
-## Security and tests
+## Automated tests and scope
 
-The GUI calls `AcademicManagementService` and `AuthenticationService`, which use `IUserRepository` and `IPasswordHasher`. `SQLiteRecordRepository` performs parameterised SQLite operations and wraps writes in transactions. Only salted password hashes are persisted, and the user-list API never exposes them.
+The GoogleTest suite contains 28 test cases, including database creation/persistence, authentication, user management, department/course CRUD, role-based allocations, and role-scoped course visibility. Run CTest after each update and share the error output if the build or tests fail.
 
-There are 19 GoogleTest test cases covering the initial domain and schema, first administrator setup, login, roles, invalid credentials, inactive accounts, SQL-injection-style input, user creation, duplicate usernames and account deactivation. Run CTest to verify the suite on the development machine.
-
-The administrator user-management screen is a **checkpoint**, not a completed LMS. User editing, password reset, departmental assignment, enrolment, course management, submissions, marking, moderation and final result release remain to be implemented and tested.
+This is **not** the full LMS yet. The assignment creation screen, extensions, typed/file submissions, resubmission, penalty calculation, marking, moderation, release and mark-change audits are planned for later implementation. Account update/password reset and some additional administrative editing controls are also pending. Do not use real student records until backup and security review are complete.
