@@ -2,12 +2,13 @@
 
 #include "lms/persistence/IAcademicRepository.h"
 #include "lms/persistence/IAssessmentRepository.h"
+#include "lms/persistence/IModerationRepository.h"
 #include "lms/persistence/ISubmissionRepository.h"
 #include "lms/persistence/IUserRepository.h"
 #include "lms/persistence/SqliteDatabase.h"
 
 namespace lms {
-class SQLiteRecordRepository final : public IUserRepository, public IAcademicRepository, public ISubmissionRepository, public IAssessmentRepository {
+class SQLiteRecordRepository final : public IUserRepository, public IAcademicRepository, public ISubmissionRepository, public IAssessmentRepository, public IModerationRepository {
 public:
     explicit SQLiteRecordRepository(SqliteDatabase& database);
     std::unique_ptr<User> findByUsername(std::string_view username) const override;
@@ -61,6 +62,13 @@ public:
         double finalMark, std::string_view feedback,
         std::string_view revisionReason, std::string_view changedAtUtc) override;
     std::vector<MarkChangeAudit> listMarkAudits(std::int64_t resultId) const override;
+    std::vector<ModerationRecord> listDepartmentResults(std::int64_t hodId) const override;
+    void approveMark(std::int64_t hodId,std::int64_t submissionId,
+        std::int64_t expectedVersionId,double earned,double penalty,double finalMark,
+        std::string_view reason,std::string_view nowUtc) override;
+    void releaseMark(std::int64_t hodId,std::int64_t submissionId,
+        std::int64_t expectedVersionId,std::string_view nowUtc) override;
+    std::vector<ReleasedResult> listReleasedForStudent(std::int64_t studentId) const override;
 private:
     SqliteDatabase& database_;
 };
