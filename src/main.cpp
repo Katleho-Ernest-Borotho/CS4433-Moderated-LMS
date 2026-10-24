@@ -1,3 +1,4 @@
+#include "lms/application/AcademicManagementService.h"
 #include "lms/application/AuthenticationService.h"
 #include "lms/application/BootstrapService.h"
 #include "lms/persistence/SQLiteRecordRepository.h"
@@ -35,8 +36,9 @@ int main(int argc, char* argv[])
         lms::SodiumPasswordHasher passwords;
         lms::AuthenticationService authentication(users, passwords);
         lms::BootstrapService bootstrap(users, passwords);
+        lms::AcademicManagementService academic(authentication, users, passwords);
 
-        lms::LoginWindow window(authentication, bootstrap);
+        lms::LoginWindow window(authentication, bootstrap, academic);
         window.show();
         return application.exec();
     } catch (const std::exception& error) {

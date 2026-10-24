@@ -20,6 +20,7 @@ add_library(lms_core
     src/security/SodiumPasswordHasher.cpp
     src/application/AuthenticationService.cpp
     src/application/BootstrapService.cpp
+    src/application/AcademicManagementService.cpp
 )
 target_include_directories(lms_core PUBLIC include)
 target_link_libraries(lms_core PUBLIC SQLite::SQLite3 PkgConfig::SODIUM)

@@ -1,13 +1,19 @@
 #include "lms/ui/LoginWindow.h"
 
+#include <QAbstractItemView>
+#include <QComboBox>
 #include <QFont>
 #include <QFormLayout>
+#include <QHeaderView>
+#include <QHBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
 #include <QMessageBox>
 #include <QPushButton>
 #include <QStackedWidget>
 #include <QString>
+#include <QTableWidget>
+#include <QTableWidgetItem>
 #include <QVBoxLayout>
 #include <QWidget>
 
@@ -39,11 +45,14 @@ QLabel* title(const QString& value, QWidget* parent)
 }
 } // namespace
 
-LoginWindow::LoginWindow(IAuthenticationService& authentication, BootstrapService& bootstrap)
-    : authentication_(authentication), bootstrap_(bootstrap)
+LoginWindow::LoginWindow(IAuthenticationService& authentication,
+                         BootstrapService& bootstrap,
+                         IAcademicManagementService& accounts)
+    : authentication_(authentication), bootstrap_(bootstrap), accounts_(accounts)
 {
     setWindowTitle("Moderated Learning Management System");
-    setMinimumSize(600, 400);
+    setMinimumSize(700, 520);
+    resize(820, 630);
 
     pages_ = new QStackedWidget(this);
     setCentralWidget(pages_);
@@ -120,32 +129,79 @@ QWidget* LoginWindow::createLoginPage()
     return page;
 }
 
+QWidget* LoginWindow::createAdminPanel()
+{
+    auto* panel = new QWidget;
+    auto* layout = new QVBoxLayout(panel);
+    layout->setSpacing(12);
+    layout->addWidget(title("User management", panel));
+
+    auto* form = new QFormLayout;
+    newUsername_ = new QLineEdit(panel);
+    newUsername_->setPlaceholderText("New username (3-40 characters)");
+    newPassword_ = new QLineEdit(panel);
+    newPassword_->setEchoMode(QLineEdit::Password);
+    newPassword_->setPlaceholderText("Initial password, at least 12 characters");
+    newRole_ = new QComboBox(panel);
+    newRole_->addItem("Student", static_cast<int>(Role::Student));
+    newRole_->addItem("Lecturer", static_cast<int>(Role::Lecturer));
+    newRole_->addItem("Head of Department", static_cast<int>(Role::HeadOfDepartment));
+    newRole_->addItem("Administrator", static_cast<int>(Role::Administrator));
+    form->addRow("Username:", newUsername_);
+    form->addRow("Initial password:", newPassword_);
+    form->addRow("Role:", newRole_);
+    layout->addLayout(form);
+
+    auto* create = new QPushButton("Create user", panel);
+    connect(create, &QPushButton::clicked, this, [this] { createAccount(); });
+    layout->addWidget(create);
+
+    accountTable_ = new QTableWidget(panel);
+    accountTable_->setColumnCount(4);
+    accountTable_->setHorizontalHeaderLabels({"ID", "Username", "Role", "Status"});
+    accountTable_->setSelectionBehavior(QAbstractItemView::SelectRows);
+    accountTable_->setSelectionMode(QAbstractItemView::SingleSelection);
+    accountTable_->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    accountTable_->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+    accountTable_->verticalHeader()->setVisible(false);
+    layout->addWidget(accountTable_);
+
+    auto* actions = new QHBoxLayout;
+    auto* refresh = new QPushButton("Refresh users", panel);
+    auto* deactivate = new QPushButton("Deactivate selected user", panel);
+    connect(refresh, &QPushButton::clicked, this, [this] { refreshAccounts(); });
+    connect(deactivate, &QPushButton::clicked, this, [this] { deactivateAccount(); });
+    actions->addWidget(refresh);
+    actions->addWidget(deactivate);
+    layout->addLayout(actions);
+    return panel;
+}
+
 QWidget* LoginWindow::createDashboardPage()
 {
     auto* page = new QWidget;
     auto* layout = new QVBoxLayout(page);
-    layout->setContentsMargins(65, 45, 65, 45);
-    layout->setSpacing(18);
+    layout->setContentsMargins(35, 25, 35, 25);
+    layout->setSpacing(10);
     layout->addWidget(title("Moderated Learning Management System", page));
+
     dashboardGreeting_ = new QLabel(page);
     dashboardGreeting_->setAlignment(Qt::AlignCenter);
     layout->addWidget(dashboardGreeting_);
 
+    adminPanel_ = createAdminPanel();
+    layout->addWidget(adminPanel_);
+
     auto* information = new QLabel(
-        "Login verified. The role-specific academic screens are not implemented yet.", page);
-    information->setAlignment(Qt::AlignCenter);
+        "Course, assignment, submission, marking and moderation screens are not implemented yet.",
+        page);
     information->setWordWrap(true);
+    information->setAlignment(Qt::AlignCenter);
     layout->addWidget(information);
 
     auto* logout = new QPushButton("Log out", page);
-    connect(logout, &QPushButton::clicked, this, [this] {
-        session_.reset();
-        loginPassword_->clear();
-        pages_->setCurrentWidget(loginPage_);
-        loginUsername_->setFocus();
-    });
+    connect(logout, &QPushButton::clicked, this, [this] { logOut(); });
     layout->addWidget(logout);
-    layout->addStretch();
     return page;
 }
 
@@ -193,7 +249,99 @@ void LoginWindow::showDashboard()
     dashboardGreeting_->setText(
         "Signed in as " + QString::fromStdString(session_->username())
         + " (" + roleText(session_->role()) + ")");
+
+    const bool administrator = session_->role() == Role::Administrator;
+    adminPanel_->setVisible(administrator);
     pages_->setCurrentWidget(dashboardPage_);
+    if (administrator) refreshAccounts();
+}
+
+void LoginWindow::createAccount()
+{
+    if (!session_) return;
+    try {
+        const auto name = newUsername_->text().trimmed().toStdString();
+        const auto password = newPassword_->text().toStdString();
+        const auto role = static_cast<Role>(newRole_->currentData().toInt());
+        const auto result = accounts_.createUser(*session_, name, password, role);
+        newUsername_->clear();
+        newPassword_->clear();
+        refreshAccounts();
+        QMessageBox::information(this, "User created",
+            "Created account for " + QString::fromStdString(result.username)
+            + " (" + roleText(result.role) + ").");
+    } catch (const AuthenticationError&) {
+        newPassword_->clear();
+        QMessageBox::warning(this, "Access denied", "Your administrator session is no longer valid.");
+        logOut();
+    } catch (const std::exception& error) {
+        newPassword_->clear();
+        QMessageBox::warning(this, "Cannot create user", error.what());
+    }
+}
+
+void LoginWindow::refreshAccounts()
+{
+    if (!session_) return;
+    try {
+        const auto users = accounts_.listUsers(*session_);
+        accountTable_->setRowCount(0);
+        accountTable_->setRowCount(static_cast<int>(users.size()));
+        for (int row = 0; row < static_cast<int>(users.size()); ++row) {
+            const auto& user = users[static_cast<std::size_t>(row)];
+            accountTable_->setItem(row, 0,
+                new QTableWidgetItem(QString::number(static_cast<qlonglong>(user.id))));
+            accountTable_->setItem(row, 1,
+                new QTableWidgetItem(QString::fromStdString(user.username)));
+            accountTable_->setItem(row, 2, new QTableWidgetItem(roleText(user.role)));
+            accountTable_->setItem(row, 3,
+                new QTableWidgetItem(user.active ? "Active" : "Inactive"));
+        }
+    } catch (const AuthenticationError&) {
+        QMessageBox::warning(this, "Access denied", "Your administrator session is no longer valid.");
+        logOut();
+    } catch (const std::exception&) {
+        QMessageBox::critical(this, "User list", "Could not load user records.");
+    }
+}
+
+void LoginWindow::deactivateAccount()
+{
+    if (!session_) return;
+    const int row = accountTable_->currentRow();
+    if (row < 0 || !accountTable_->item(row, 0) || !accountTable_->item(row, 1)) {
+        QMessageBox::information(this, "Select a user", "Select an account in the table first.");
+        return;
+    }
+
+    const auto userId = accountTable_->item(row, 0)->text().toLongLong();
+    const QString userName = accountTable_->item(row, 1)->text();
+    if (QMessageBox::question(this, "Deactivate user",
+           "Deactivate " + userName + "? The account will no longer be able to log in.")
+        != QMessageBox::Yes) return;
+
+    try {
+        accounts_.deactivateUser(*session_, userId);
+        refreshAccounts();
+        QMessageBox::information(this, "User deactivated", userName + " is now inactive.");
+    } catch (const AuthenticationError&) {
+        QMessageBox::warning(this, "Access denied", "Your administrator session is no longer valid.");
+        logOut();
+    } catch (const std::exception& error) {
+        QMessageBox::warning(this, "Cannot deactivate user", error.what());
+    }
+}
+
+void LoginWindow::logOut()
+{
+    session_.reset();
+    newUsername_->clear();
+    newPassword_->clear();
+    loginPassword_->clear();
+    accountTable_->setRowCount(0);
+    adminPanel_->hide();
+    pages_->setCurrentWidget(loginPage_);
+    loginUsername_->setFocus();
 }
 
 } // namespace lms
