@@ -20,7 +20,8 @@ void SubmissionManagementService::grantExtension(
         throw AuthenticationError("Cannot extend an assignment outside your courses");
     if(!academic_.isStudentEnrolled(studentId, assignment->courseId))
         throw std::invalid_argument("Selected student is not enrolled");
-    if(newDeadlineUtc <= academic_.findEffectiveDeadline(assignmentId, studentId))
+    const std::string currentDeadline=academic_.findEffectiveDeadline(assignmentId, studentId);
+    if(newDeadlineUtc <= std::string_view(currentDeadline))
         throw std::invalid_argument("New deadline must be later than the current effective deadline");
     academic_.saveExtension(assignmentId,studentId,actor.userId(),newDeadlineUtc);
 }
