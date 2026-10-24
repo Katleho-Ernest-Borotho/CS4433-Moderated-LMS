@@ -6,6 +6,7 @@
 #include <QWidget>
 #include <exception>
 #include <optional>
+#include <vector>
 
 class QComboBox;
 class QDateTimeEdit;
@@ -14,6 +15,8 @@ class QGroupBox;
 class QLabel;
 class QLineEdit;
 class QTableWidget;
+class QTextEdit;
+class QPushButton;
 
 namespace lms {
 
@@ -34,6 +37,10 @@ private:
     void grantExtension();
     void refreshEffectiveDeadline();
     void showError(const std::exception& error);
+    void chooseFile();
+    void submitWork();
+    void refreshHistory();
+    void showSelectedVersion();
 
     IAcademicManagementService& academic_;
     ISubmissionService& submissions_;
@@ -50,6 +57,14 @@ private:
     QComboBox* enrolledStudents_ = nullptr;
     QDateTimeEdit* extensionDeadline_ = nullptr;
     QLabel* currentDeadline_ = nullptr;
+    QGroupBox* studentSubmissionGroup_ = nullptr;
+    QComboBox* submissionAssignments_ = nullptr;
+    QTextEdit* submissionText_ = nullptr;
+    QLineEdit* attachmentPath_ = nullptr;
+    QPushButton* submitButton_ = nullptr;
+    QTableWidget* versionHistory_ = nullptr;
+    QTextEdit* savedText_ = nullptr;
+    std::vector<SubmissionVersion> savedVersions_;
 };
 
 } // namespace lms
