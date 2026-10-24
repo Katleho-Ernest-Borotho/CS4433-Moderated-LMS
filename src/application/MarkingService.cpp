@@ -25,9 +25,9 @@ std::string utcNow()
 
 MarkingService::MarkingService(const IAuthenticationService& authentication,
     const IAcademicRepository& academic, IAssessmentRepository& results,
-    const ILatePenaltyPolicy& penalties)
+    const ILatePenaltyPolicy& penalties, const ISubmissionContentStore& files)
     : authentication_(authentication),academic_(academic),
-      results_(results),penalties_(penalties) {}
+      results_(results),penalties_(penalties),files_(files) {}
 
 void MarkingService::requireAssignedLecturer(
     const Session& actor, std::int64_t assignmentId) const
@@ -71,6 +71,28 @@ AssessmentResult MarkingService::mark(
     return results_.saveUnreleasedMark(submissionId,submitted->latestVersionId,
         lecturer.userId(),roundedEarned,breakdown.penaltyMark,
         breakdown.finalMark,feedback,revisionReason,utcNow());
+}
+
+std::optional<AssessmentResult> MarkingService::currentResult(
+    const Session& actor,std::int64_t submissionId) const
+{
+    authentication_.requireRole(actor,Role::Lecturer);
+    const auto submitted=results_.findMarkableSubmission(submissionId);
+    if(!submitted)throw std::invalid_argument("Submission not found");
+    requireAssignedLecturer(actor,submitted->assignmentId);
+    return results_.findResult(submissionId);
+}
+
+std::string MarkingService::readLatestAttachment(
+    const Session& actor,std::int64_t submissionId) const
+{
+    authentication_.requireRole(actor,Role::Lecturer);
+    const auto submitted=results_.findMarkableSubmission(submissionId);
+    if(!submitted)throw std::invalid_argument("Submission not found");
+    requireAssignedLecturer(actor,submitted->assignmentId);
+    if(submitted->attachmentRef.empty())
+        throw std::invalid_argument("This submission has no file attachment");
+    return files_.read(StoredRef{submitted->attachmentRef});
 }
 
 std::vector<MarkChangeAudit> MarkingService::auditsForSubmission(
