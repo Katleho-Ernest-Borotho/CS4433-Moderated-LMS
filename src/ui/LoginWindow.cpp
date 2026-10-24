@@ -17,6 +17,7 @@
 #include <QVBoxLayout>
 #include <QWidget>
 
+#include <cstddef>
 #include <exception>
 #include <string>
 
@@ -142,6 +143,9 @@ QWidget* LoginWindow::createAdminPanel()
     newPassword_ = new QLineEdit(panel);
     newPassword_->setEchoMode(QLineEdit::Password);
     newPassword_->setPlaceholderText("Initial password, at least 12 characters");
+    newPasswordConfirmation_ = new QLineEdit(panel);
+    newPasswordConfirmation_->setEchoMode(QLineEdit::Password);
+    newPasswordConfirmation_->setPlaceholderText("Confirm initial password");
     newRole_ = new QComboBox(panel);
     newRole_->addItem("Student", static_cast<int>(Role::Student));
     newRole_->addItem("Lecturer", static_cast<int>(Role::Lecturer));
@@ -149,6 +153,7 @@ QWidget* LoginWindow::createAdminPanel()
     newRole_->addItem("Administrator", static_cast<int>(Role::Administrator));
     form->addRow("Username:", newUsername_);
     form->addRow("Initial password:", newPassword_);
+    form->addRow("Confirm password:", newPasswordConfirmation_);
     form->addRow("Role:", newRole_);
     layout->addLayout(form);
 
@@ -259,6 +264,12 @@ void LoginWindow::showDashboard()
 void LoginWindow::createAccount()
 {
     if (!session_) return;
+    if (newPassword_->text() != newPasswordConfirmation_->text()) {
+        newPassword_->clear();
+        newPasswordConfirmation_->clear();
+        QMessageBox::warning(this, "Cannot create user", "Passwords do not match.");
+        return;
+    }
     try {
         const auto name = newUsername_->text().trimmed().toStdString();
         const auto password = newPassword_->text().toStdString();
@@ -266,16 +277,19 @@ void LoginWindow::createAccount()
         const auto result = accounts_.createUser(*session_, name, password, role);
         newUsername_->clear();
         newPassword_->clear();
+        newPasswordConfirmation_->clear();
         refreshAccounts();
         QMessageBox::information(this, "User created",
             "Created account for " + QString::fromStdString(result.username)
             + " (" + roleText(result.role) + ").");
     } catch (const AuthenticationError&) {
         newPassword_->clear();
+        newPasswordConfirmation_->clear();
         QMessageBox::warning(this, "Access denied", "Your administrator session is no longer valid.");
         logOut();
     } catch (const std::exception& error) {
         newPassword_->clear();
+        newPasswordConfirmation_->clear();
         QMessageBox::warning(this, "Cannot create user", error.what());
     }
 }
@@ -337,6 +351,7 @@ void LoginWindow::logOut()
     session_.reset();
     newUsername_->clear();
     newPassword_->clear();
+    newPasswordConfirmation_->clear();
     loginPassword_->clear();
     accountTable_->setRowCount(0);
     adminPanel_->hide();

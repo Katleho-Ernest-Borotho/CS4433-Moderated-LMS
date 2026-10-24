@@ -32,7 +32,6 @@ private:
     void refreshAccounts();
     void deactivateAccount();
     void logOut();
-    void displayAccountError(const std::exception& error);
 
     IAuthenticationService& authentication_;
     BootstrapService& bootstrap_;
@@ -49,6 +48,7 @@ private:
     QLineEdit* loginPassword_ = nullptr;
     QLineEdit* newUsername_ = nullptr;
     QLineEdit* newPassword_ = nullptr;
+    QLineEdit* newPasswordConfirmation_ = nullptr;
     QComboBox* newRole_ = nullptr;
     QTableWidget* accountTable_ = nullptr;
     QLabel* dashboardGreeting_ = nullptr;
