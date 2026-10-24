@@ -2,6 +2,8 @@
 #include "lms/application/IAuthenticationService.h"
 #include "lms/domain/AssessmentRecords.h"
 #include <cstdint>
+#include <optional>
+#include <string>
 #include <string_view>
 #include <vector>
 
@@ -14,6 +16,10 @@ public:
     virtual AssessmentResult mark(const Session& lecturer,
         std::int64_t submissionId, double earnedMark,
         std::string_view feedback, std::string_view revisionReason)=0;
+    virtual std::optional<AssessmentResult> currentResult(
+        const Session& lecturer, std::int64_t submissionId) const=0;
+    virtual std::string readLatestAttachment(
+        const Session& lecturer, std::int64_t submissionId) const=0;
     virtual std::vector<MarkChangeAudit> auditsForSubmission(
         const Session& lecturer, std::int64_t submissionId) const=0;
 };
