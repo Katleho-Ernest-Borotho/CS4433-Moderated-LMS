@@ -62,6 +62,7 @@ const char* moderationQuery=
     "SELECT r.result_id,s.submission_id,s.assignment_id,s.student_id,"
     "r.marked_version_id,v.version_id,u.username,c.code,a.title,"
     "v.submitted_at_utc,COALESCE(de.new_deadline_utc,a.deadline_utc),r.feedback,"
+    "COALESCE(v.text_content,''),COALESCE(v.attachment_ref,''),"
     "a.maximum_mark,r.earned_mark,r.penalty_mark,r.final_mark,r.approved,"
     "COALESCE(r.released_at_utc,'') "
     "FROM assessment_results r "
@@ -85,9 +86,10 @@ ModerationRecord readModeration(sqlite3_stmt* s)
         sqlite3_column_int64(s,2),sqlite3_column_int64(s,3),
         sqlite3_column_int64(s,4),sqlite3_column_int64(s,5),
         getText(s,6),getText(s,7),getText(s,8),getText(s,9),getText(s,10),
-        getText(s,11),sqlite3_column_double(s,12),sqlite3_column_double(s,13),
+        getText(s,11),getText(s,12),getText(s,13),
         sqlite3_column_double(s,14),sqlite3_column_double(s,15),
-        sqlite3_column_int(s,16)==1,getText(s,17)};
+        sqlite3_column_double(s,16),sqlite3_column_double(s,17),
+        sqlite3_column_int(s,18)==1,getText(s,19)};
 }
 
 ModerationRecord currentTarget(sqlite3* db,std::int64_t hod,std::int64_t submission)
