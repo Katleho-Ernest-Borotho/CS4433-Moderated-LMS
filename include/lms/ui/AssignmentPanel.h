@@ -4,6 +4,7 @@
 #include "lms/application/ISubmissionService.h"
 
 #include <QWidget>
+#include <exception>
 #include <optional>
 
 class QComboBox;
