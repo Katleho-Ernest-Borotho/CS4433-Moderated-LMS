@@ -15,17 +15,20 @@ configure_file(schema/lms_schema.sql ${CMAKE_CURRENT_BINARY_DIR}/lms_schema.sql 
 
 add_library(lms_core
     src/domain/User.cpp
+    src/domain/LatePenaltyPolicy.cpp
     src/persistence/SqliteDatabase.cpp
     src/persistence/SQLiteRecordRepository.cpp
     src/persistence/SQLiteAcademicRepository.cpp
     src/persistence/SQLiteAssignmentsRepository.cpp
     src/persistence/SQLiteSubmissionRepository.cpp
+    src/persistence/SQLiteAssessmentRepository.cpp
     src/persistence/LocalSubmissionContentStore.cpp
     src/security/SodiumPasswordHasher.cpp
     src/application/AuthenticationService.cpp
     src/application/BootstrapService.cpp
     src/application/AcademicManagementService.cpp
     src/application/SubmissionManagementService.cpp
+    src/application/MarkingService.cpp
 )
 target_include_directories(lms_core PUBLIC include)
 target_link_libraries(lms_core PUBLIC SQLite::SQLite3 PkgConfig::SODIUM)
@@ -35,6 +38,7 @@ qt_add_executable(ModeratedLMS
     src/ui/LoginWindow.cpp
     src/ui/AcademicPanel.cpp
     src/ui/AssignmentPanel.cpp
+    src/ui/MarkingPanel.cpp
 )
 target_link_libraries(ModeratedLMS PRIVATE Qt6::Widgets lms_core)
 
