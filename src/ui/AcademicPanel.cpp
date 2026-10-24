@@ -1,5 +1,6 @@
 #include "lms/ui/AcademicPanel.h"
 
+#include <QAbstractItemView>
 #include <QComboBox>
 #include <QFormLayout>
 #include <QGroupBox>
@@ -17,6 +18,7 @@
 #include <QVariant>
 
 #include <algorithm>
+#include <cstddef>
 #include <cstdint>
 #include <exception>
 #include <stdexcept>
@@ -95,7 +97,7 @@ AcademicPanel::AcademicPanel(IAcademicManagementService& service,
     auto* addCourse = new QPushButton("Create course", courseGroup);
     courseLayout->addWidget(addCourse);
     courses_ = new QComboBox(courseGroup);
-    auto* editCourseButton = new QPushButton("Edit selected course", courseGroup);
+    auto* editCourseButton = new QPushButton("Edit selected course title", courseGroup);
     courseLayout->addWidget(courses_);
     courseLayout->addWidget(editCourseButton);
     coursesTable_ = makeTable(courseGroup, {"ID", "Code", "Course", "Department ID"});
