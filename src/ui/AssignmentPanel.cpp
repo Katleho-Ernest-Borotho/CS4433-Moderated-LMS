@@ -46,7 +46,10 @@ void addChoice(QComboBox* box, const QString& name, std::int64_t id)
 
 QString asUtc(const QDateTime& date)
 {
-    return date.toUTC().toString("yyyy-MM-ddTHH:mm:ss'Z'");
+    // The date editor displays minutes, so save new deadlines at second 00.
+    auto precise = date;
+    precise.setTime(QTime(date.time().hour(), date.time().minute(), 0));
+    return precise.toUTC().toString("yyyy-MM-ddTHH:mm:ss'Z'");
 }
 
 QString asReadableLocalTime(std::string_view utc)
@@ -274,8 +277,13 @@ void AssignmentPanel::loadCourse()
                         submissions_.effectiveDeadline(actor(),a.id,actor().userId()));
                 }
                 assignments_->setItem(i,0,new QTableWidgetItem(QString::fromStdString(a.title)));
-                assignments_->setItem(i,1,new QTableWidgetItem(asReadableLocalTime(a.deadlineUtc)));
-                assignments_->setItem(i,2,new QTableWidgetItem(effective));
+                auto* originalTime = new QTableWidgetItem(asReadableLocalTime(a.deadlineUtc));
+                originalTime->setToolTip(QString::fromStdString(a.deadlineUtc) + " UTC (exact)");
+                assignments_->setItem(i,1,originalTime);
+                auto* effectiveTime = new QTableWidgetItem(effective);
+                if (!lecturer) effectiveTime->setToolTip(QString::fromStdString(
+                    submissions_.effectiveDeadline(actor(),a.id,actor().userId())) + " UTC (exact)");
+                assignments_->setItem(i,2,effectiveTime);
                 assignments_->setItem(i,3,new QTableWidgetItem(QString::number(a.maximumMark,'f',2)));
                 if(lecturer)
                     addChoice(extensionAssignments_,QString::fromStdString(a.title),a.id);
@@ -408,7 +416,7 @@ void AssignmentPanel::showSelectedVersion()
     }
     const auto& selected=savedVersions_[static_cast<std::size_t>(row)];
     savedText_->setPlainText(selected.text.empty()
-        ? (selected.attachmentRef.empty() ? "(No text)" : "(File-only submission)")
+        ? QString(selected.attachmentRef.empty() ? "(No text)" : "(File-only submission)")
         : QString::fromStdString(selected.text));
 }
 
