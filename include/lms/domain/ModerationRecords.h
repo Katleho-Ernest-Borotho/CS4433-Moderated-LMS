@@ -9,6 +9,7 @@ struct ModerationRecord {
     std::int64_t markedVersionId=0, latestVersionId=0;
     std::string studentUsername, courseCode, assignmentTitle;
     std::string latestSubmittedAtUtc, effectiveDeadlineUtc, feedback;
+    std::string submittedText, attachmentRef;
     double maximumMark=0, earnedMark=0, penaltyMark=0, finalMark=0;
     bool approved=false;
     std::string releasedAtUtc;
