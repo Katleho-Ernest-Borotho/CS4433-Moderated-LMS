@@ -2,6 +2,8 @@
 #include "lms/application/AuthenticationService.h"
 #include "lms/application/BootstrapService.h"
 #include "lms/application/SubmissionManagementService.h"
+#include "lms/application/MarkingService.h"
+#include "lms/domain/LatePenaltyPolicy.h"
 #include "lms/persistence/SQLiteRecordRepository.h"
 #include "lms/persistence/LocalSubmissionContentStore.h"
 #include "lms/persistence/SqliteDatabase.h"
@@ -42,7 +44,9 @@ int main(int argc, char* argv[])
 
         lms::LocalSubmissionContentStore files((dataDirectory + "/attachments").toStdString());
         lms::SubmissionManagementService submissions(authentication, users, users, files);
-        lms::LoginWindow window(authentication, bootstrap, academic, submissions);
+        lms::CommencedDayPenaltyPolicy penaltyPolicy;
+        lms::MarkingService marking(authentication, users, users, penaltyPolicy, files);
+        lms::LoginWindow window(authentication, bootstrap, academic, submissions, marking);
         window.show();
         return application.exec();
     } catch (const std::exception& error) {
