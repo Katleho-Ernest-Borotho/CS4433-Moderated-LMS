@@ -1,4 +1,7 @@
+#include "lms/application/AuthenticationService.h"
+#include "lms/application/BootstrapService.h"
 #include "lms/domain/User.h"
+#include "lms/persistence/SQLiteRecordRepository.h"
 #include "lms/persistence/SqliteDatabase.h"
 #include "lms/security/SodiumPasswordHasher.h"
 
@@ -86,4 +89,95 @@ TEST(DatabaseTests, CreatesApprovedSchemaAndKeepsDataAfterReopen)
     sqlite3_finalize(statement);
     sqlite3_close(connection);
     fs::remove(databasePath);
+}
+
+class AuthenticationTests : public ::testing::Test {
+protected:
+    void SetUp() override
+    {
+        database.initializeSchemaFromFile(
+            (std::filesystem::current_path() / "lms_schema.sql").string());
+    }
+
+    lms::SqliteDatabase database{":memory:"};
+    lms::SodiumPasswordHasher passwords;
+    lms::SQLiteRecordRepository users{database};
+    lms::AuthenticationService authentication{users, passwords};
+    lms::BootstrapService bootstrap{users, passwords};
+};
+
+TEST_F(AuthenticationTests, FreshDatabaseHasNoDefaultCredentials)
+{
+    EXPECT_TRUE(bootstrap.needsSetup());
+    EXPECT_FALSE(users.findByUsername("admin"));
+}
+
+TEST_F(AuthenticationTests, CanCreateAndLogInAsFirstAdministrator)
+{
+    bootstrap.createInitialAdministrator("school.admin", "LongSecretPassword123!");
+    ASSERT_FALSE(bootstrap.needsSetup());
+    auto user = users.findByUsername("SCHOOL.ADMIN");
+    ASSERT_NE(user, nullptr);
+    EXPECT_EQ(user->role(), lms::Role::Administrator);
+    EXPECT_NE(user->passwordHash(), "LongSecretPassword123!");
+    EXPECT_TRUE(passwords.verify("LongSecretPassword123!", user->passwordHash()));
+
+    const auto session = authentication.logIn("SCHOOL.ADMIN", "LongSecretPassword123!");
+    EXPECT_EQ(session.userId(), user->id());
+    EXPECT_EQ(session.role(), lms::Role::Administrator);
+    authentication.requireRole(session, lms::Role::Administrator);
+}
+
+TEST_F(AuthenticationTests, RejectsIncorrectOrUnknownLogin)
+{
+    bootstrap.createInitialAdministrator("schooladmin", "LongSecretPassword123!");
+    EXPECT_THROW(authentication.logIn("schooladmin", "wrong password"), lms::AuthenticationError);
+    EXPECT_THROW(authentication.logIn("unknown", "LongSecretPassword123!"), lms::AuthenticationError);
+    EXPECT_THROW(authentication.logIn("", "LongSecretPassword123!"), lms::AuthenticationError);
+    EXPECT_THROW(authentication.logIn("schooladmin", ""), lms::AuthenticationError);
+}
+
+TEST_F(AuthenticationTests, RejectsSecondBootstrap)
+{
+    bootstrap.createInitialAdministrator("firstadmin", "LongSecretPassword123!");
+    EXPECT_THROW(bootstrap.createInitialAdministrator("otheradmin", "LongSecretPassword123!"),
+                 std::runtime_error);
+    EXPECT_FALSE(users.findByUsername("otheradmin"));
+}
+
+TEST_F(AuthenticationTests, RejectsWeakSetupCredentials)
+{
+    EXPECT_THROW(bootstrap.createInitialAdministrator("a", "LongSecretPassword123!"),
+                 std::invalid_argument);
+    EXPECT_THROW(bootstrap.createInitialAdministrator("root", "short"),
+                 std::invalid_argument);
+    EXPECT_TRUE(bootstrap.needsSetup());
+}
+
+TEST_F(AuthenticationTests, InactiveAccountCannotLogInOrReuseSession)
+{
+    bootstrap.createInitialAdministrator("admin1", "LongSecretPassword123!");
+    const auto session = authentication.logIn("admin1", "LongSecretPassword123!");
+    users.deactivateUser(session.userId());
+    EXPECT_THROW(authentication.logIn("admin1", "LongSecretPassword123!"),
+                 lms::AuthenticationError);
+    EXPECT_THROW(authentication.requireRole(session, lms::Role::Administrator),
+                 lms::AuthenticationError);
+}
+
+TEST_F(AuthenticationTests, ChecksRoleOnEveryProtectedServiceCall)
+{
+    bootstrap.createInitialAdministrator("admin1", "LongSecretPassword123!");
+    const auto session = authentication.logIn("admin1", "LongSecretPassword123!");
+    EXPECT_NO_THROW(authentication.requireRole(session, lms::Role::Administrator));
+    EXPECT_THROW(authentication.requireRole(session, lms::Role::Student),
+                 lms::AuthenticationError);
+}
+
+TEST_F(AuthenticationTests, PreparedUsernameQueryDoesNotPermitSqlInjection)
+{
+    bootstrap.createInitialAdministrator("admin1", "LongSecretPassword123!");
+    EXPECT_FALSE(users.findByUsername("' OR 1=1 --"));
+    EXPECT_THROW(authentication.logIn("' OR 1=1 --", "LongSecretPassword123!"),
+                 lms::AuthenticationError);
 }
