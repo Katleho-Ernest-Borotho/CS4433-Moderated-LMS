@@ -2,6 +2,8 @@
 #include "lms/application/AuthenticationService.h"
 #include "lms/application/BootstrapService.h"
 #include "lms/application/SubmissionManagementService.h"
+#include "lms/application/MarkingService.h"
+#include "lms/domain/LatePenaltyPolicy.h"
 #include "lms/domain/UtcDateTime.h"
 #include "lms/domain/User.h"
 #include "lms/persistence/SQLiteRecordRepository.h"
@@ -829,4 +831,231 @@ TEST_F(SubmissionTests, InvalidAttachmentRefIsNotReadOrDeleted)
 {
     EXPECT_THROW(store.read(lms::StoredRef{"../../escape.txt"}),std::invalid_argument);
     EXPECT_NO_THROW(store.remove(lms::StoredRef{"../../escape.txt"}));
+}
+
+
+TEST(LatePenaltyPolicyTests, ExactBoundariesAndCommencedDays)
+{
+    const lms::CommencedDayPenaltyPolicy policy;
+    const auto check=[&](const char* timestamp,int days,double penalty,double finalMark) {
+        const auto actual=policy.calculate(75.0,100.0,timestamp,"2030-10-28T12:00:00Z");
+        EXPECT_EQ(actual.commencedLateDays,days);
+        EXPECT_DOUBLE_EQ(actual.penaltyMark,penalty);
+        EXPECT_DOUBLE_EQ(actual.finalMark,finalMark);
+    };
+    check("2030-10-28T11:59:59Z",0,0,75);
+    check("2030-10-28T12:00:00Z",0,0,75);
+    check("2030-10-28T12:00:01Z",1,10,65);
+    check("2030-10-29T12:00:00Z",1,10,65);
+    check("2030-10-29T12:00:01Z",2,20,55);
+    check("2030-10-30T12:00:00Z",2,20,55);
+    check("2030-10-30T12:00:01Z",3,30,45);
+    check("2030-10-31T12:00:00Z",3,30,45);
+    check("2030-10-31T12:00:01Z",4,75,0);
+}
+
+TEST(LatePenaltyPolicyTests, LowEarnedMarksNeverBecomeNegative)
+{
+    const lms::CommencedDayPenaltyPolicy p;
+    auto result=p.calculate(5.0,100.0,"2030-10-28T12:00:01Z","2030-10-28T12:00:00Z");
+    EXPECT_DOUBLE_EQ(result.penaltyMark,10);
+    EXPECT_DOUBLE_EQ(result.finalMark,0);
+}
+
+TEST(LatePenaltyPolicyTests, RejectsOutOfRangeAndNonFiniteMarks)
+{
+    const lms::CommencedDayPenaltyPolicy p;
+    const auto mark=[&](double earned,double max) {
+        return p.calculate(earned,max,"2030-10-28T12:00:01Z","2030-10-28T12:00:00Z");
+    };
+    EXPECT_THROW(mark(-1,100),std::invalid_argument);
+    EXPECT_THROW(mark(101,100),std::invalid_argument);
+    EXPECT_THROW(mark(50,0),std::invalid_argument);
+    EXPECT_THROW(mark(std::numeric_limits<double>::infinity(),100),std::invalid_argument);
+    EXPECT_THROW(mark(20,std::numeric_limits<double>::quiet_NaN()),std::invalid_argument);
+}
+
+TEST(LatePenaltyPolicyTests, HandlesCalendarAndLeapDayTransitions)
+{
+    const lms::CommencedDayPenaltyPolicy p;
+    const auto same=p.calculate(80,100,"2028-03-01T00:00:00Z","2028-02-29T00:00:00Z");
+    EXPECT_EQ(same.commencedLateDays,1);
+    const auto later=p.calculate(80,100,"2028-03-01T00:00:01Z","2028-02-29T00:00:00Z");
+    EXPECT_EQ(later.commencedLateDays,2);
+}
+
+class MarkingTests : public SubmissionTests {
+protected:
+    lms::CommencedDayPenaltyPolicy penalty;
+    lms::MarkingService marking{authentication,users,users,penalty,store};
+    lms::Session lecturer()
+    {
+        return authentication.logIn("lecturer1","LecturerPassword123!");
+    }
+};
+
+TEST_F(MarkingTests, LecturerCanViewLatestSubmittedVersionAndSaveProvisionalMark)
+{
+    initialise();
+    const auto assignment=makeAssignment("2030-10-28T12:00:00Z");
+    const auto version=submissionService.submit(studentSession(),assignment.id,{"Review this answer",""});
+    const auto rows=marking.listSubmissions(lecturer(),assignment.id);
+    ASSERT_EQ(rows.size(),1U);
+    EXPECT_EQ(rows[0].latestVersionId,version.id);
+    EXPECT_EQ(rows[0].text,"Review this answer");
+    const auto saved=marking.mark(lecturer(),rows[0].submissionId,75,"Good effort","");
+    EXPECT_DOUBLE_EQ(saved.earnedMark,75);
+    EXPECT_DOUBLE_EQ(saved.penaltyMark,0);
+    EXPECT_DOUBLE_EQ(saved.finalMark,75);
+    EXPECT_FALSE(saved.approved);
+    EXPECT_TRUE(saved.releasedAtUtc.empty());
+    EXPECT_EQ(saved.markedVersionId,version.id);
+    EXPECT_EQ(users.findFor(studentSession().userId(),assignment.id)->state,"Marked");
+    EXPECT_TRUE(marking.auditsForSubmission(lecturer(),rows[0].submissionId).empty());
+}
+
+TEST_F(MarkingTests, MarkingAppliesOneLateDayDeductionFromMaximum)
+{
+    initialise();
+    const auto assignment=makeAssignment("2000-01-01T00:00:00Z");
+    const auto student=studentSession();
+    const auto version=users.saveVersion(student.userId(),assignment.id,"Late submission","",
+        "2000-01-01T00:00:01Z");
+    const auto actual=marking.mark(lecturer(),version.submissionId,75,"Marked late","");
+    EXPECT_DOUBLE_EQ(actual.penaltyMark,10);
+    EXPECT_DOUBLE_EQ(actual.finalMark,65);
+}
+
+TEST_F(MarkingTests, MoreThan72HoursLateForcesFinalMarkZero)
+{
+    initialise();
+    const auto assignment=makeAssignment("2000-01-01T00:00:00Z");
+    const auto version=submissionService.submit(studentSession(),assignment.id,{"Very late",""});
+    const auto result=marking.mark(lecturer(),version.submissionId,80,"Late feedback","");
+    EXPECT_EQ(result.finalMark,0);
+    EXPECT_EQ(result.penaltyMark,80);
+}
+
+TEST_F(MarkingTests, WrongLecturerAndStudentCannotSeeOrMarkSubmissions)
+{
+    initialise();
+    const auto assignment=makeAssignment("2030-10-28T12:00:00Z");
+    const auto version=submissionService.submit(studentSession(),assignment.id,{"Private",""});
+    const auto other=authentication.logIn("lecturer2","LecturerPassword456!");
+    EXPECT_THROW(marking.listSubmissions(other,assignment.id),lms::AuthenticationError);
+    EXPECT_THROW(marking.mark(other,version.submissionId,60,"No permission",""),
+        lms::AuthenticationError);
+    EXPECT_THROW(marking.listSubmissions(studentSession(),assignment.id),
+        lms::AuthenticationError);
+    EXPECT_THROW(marking.currentResult(studentSession(),version.submissionId),
+        lms::AuthenticationError);
+    EXPECT_THROW(marking.auditsForSubmission(studentSession(),version.submissionId),
+        lms::AuthenticationError);
+}
+
+TEST_F(MarkingTests, RejectsInvalidMarksAndBlankFeedbackWithoutWritingResults)
+{
+    initialise();
+    const auto assignment=makeAssignment("2030-10-28T12:00:00Z");
+    const auto version=submissionService.submit(studentSession(),assignment.id,{"Answer",""});
+    EXPECT_THROW(marking.mark(lecturer(),version.submissionId,-1,"Bad",""),std::invalid_argument);
+    EXPECT_THROW(marking.mark(lecturer(),version.submissionId,101,"Bad",""),std::invalid_argument);
+    EXPECT_THROW(marking.mark(lecturer(),version.submissionId,60," ",""),std::invalid_argument);
+    EXPECT_FALSE(marking.currentResult(lecturer(),version.submissionId));
+}
+
+TEST_F(MarkingTests, ChangingEarnedAndFinalMarksCreatesAtomicAuditEntries)
+{
+    initialise();
+    const auto assignment=makeAssignment("2030-10-28T12:00:00Z");
+    const auto version=submissionService.submit(studentSession(),assignment.id,{"Answer",""});
+    marking.mark(lecturer(),version.submissionId,60,"First assessment","");
+    const auto updated=marking.mark(lecturer(),version.submissionId,80,
+                                   "After review","Rechecked answer");
+    EXPECT_DOUBLE_EQ(updated.earnedMark,80);
+    EXPECT_DOUBLE_EQ(updated.finalMark,80);
+    const auto audit=marking.auditsForSubmission(lecturer(),version.submissionId);
+    ASSERT_EQ(audit.size(),2U);
+    EXPECT_EQ(audit[0].field,"earned_mark");
+    EXPECT_EQ(audit[1].field,"final_mark");
+    EXPECT_DOUBLE_EQ(audit[0].oldValue,60);
+    EXPECT_DOUBLE_EQ(audit[0].newValue,80);
+    EXPECT_EQ(audit[0].reason,"Rechecked answer");
+    EXPECT_EQ(users.findFor(studentSession().userId(),assignment.id)->state,"Marked");
+}
+
+TEST_F(MarkingTests, RejectsRevisionWithoutReasonAndPreservesPreviousResult)
+{
+    initialise();
+    const auto assignment=makeAssignment("2030-10-28T12:00:00Z");
+    const auto version=submissionService.submit(studentSession(),assignment.id,{"Answer",""});
+    const auto original=marking.mark(lecturer(),version.submissionId,60,"Original","");
+    EXPECT_THROW(marking.mark(lecturer(),version.submissionId,90,"Revised",""),
+                 std::invalid_argument);
+    const auto saved=marking.currentResult(lecturer(),version.submissionId);
+    ASSERT_TRUE(saved.has_value());
+    EXPECT_DOUBLE_EQ(saved->earnedMark,original.earnedMark);
+    EXPECT_EQ(saved->feedback,"Original");
+    EXPECT_TRUE(marking.auditsForSubmission(lecturer(),version.submissionId).empty());
+}
+
+TEST_F(MarkingTests, NewVersionNeedsRemarkAndPreservesEarlierVersion)
+{
+    initialise();
+    const auto assignment=makeAssignment("2030-10-28T12:00:00Z");
+    const auto first=submissionService.submit(studentSession(),assignment.id,{"First",""});
+    const auto earlier=marking.mark(lecturer(),first.submissionId,60,"First mark","");
+    const auto second=submissionService.submit(studentSession(),assignment.id,{"Second",""});
+    ASSERT_EQ(users.listVersions(studentSession().userId(),assignment.id).size(),2U);
+    EXPECT_EQ(marking.currentResult(lecturer(),first.submissionId)->markedVersionId,first.id);
+    EXPECT_EQ(users.findFor(studentSession().userId(),assignment.id)->state,"Submitted");
+    EXPECT_THROW(marking.mark(lecturer(),first.submissionId,75,"Updated",""),
+                 std::invalid_argument);
+    const auto newest=marking.mark(lecturer(),second.submissionId,75,
+                                    "New version assessed","Student resubmitted");
+    EXPECT_EQ(newest.markedVersionId,second.id);
+    EXPECT_EQ(newest.resultId,earlier.resultId);
+    EXPECT_EQ(users.findFor(studentSession().userId(),assignment.id)->state,"Marked");
+    EXPECT_EQ(users.listVersions(studentSession().userId(),assignment.id).size(),2U);
+}
+
+TEST_F(MarkingTests, LecturerCanOpenOnlyAuthorisedLatestAttachment)
+{
+    initialise();
+    const auto assignment=makeAssignment("2030-10-28T12:00:00Z");
+    const auto file=testFilesDir/"submission.txt";
+    {
+        std::ofstream output(file,std::ios::binary);
+        output<<"Mark this file";
+    }
+    const auto version=submissionService.submit(studentSession(),assignment.id,{"",file.string()});
+    EXPECT_EQ(marking.readLatestAttachment(lecturer(),version.submissionId),
+              "Mark this file");
+    const auto stranger=authentication.logIn("lecturer2","LecturerPassword456!");
+    EXPECT_THROW(marking.readLatestAttachment(stranger,version.submissionId),
+                 lms::AuthenticationError);
+    EXPECT_THROW(marking.readLatestAttachment(studentSession(),version.submissionId),
+                 lms::AuthenticationError);
+}
+
+TEST_F(MarkingTests, LatePenaltyUsesIndividualExtension)
+{
+    initialise();
+    const auto assignment=makeAssignment("2000-01-01T00:00:00Z");
+    const auto student=studentSession();
+    const auto version=users.saveVersion(student.userId(),assignment.id,"Answer","",
+                                         "2000-01-02T00:00:01Z");
+    submissions.grantExtension(lecturer(),assignment.id,student.userId(),
+                               "2030-10-28T12:00:00Z");
+    const auto marked=marking.mark(lecturer(),version.submissionId,75,
+                                    "Extended deadline applies","");
+    EXPECT_DOUBLE_EQ(marked.penaltyMark,0);
+    EXPECT_DOUBLE_EQ(marked.finalMark,75);
+}
+
+TEST_F(MarkingTests, MissingSubmissionCannotBeMarked)
+{
+    initialise();
+    EXPECT_THROW(marking.mark(lecturer(),999999,50,"No submission",""),
+                 std::invalid_argument);
 }
