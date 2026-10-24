@@ -1,6 +1,7 @@
 #include "lms/application/AcademicManagementService.h"
 #include "lms/application/AuthenticationService.h"
 #include "lms/application/BootstrapService.h"
+#include "lms/application/SubmissionManagementService.h"
 #include "lms/persistence/SQLiteRecordRepository.h"
 #include "lms/persistence/SqliteDatabase.h"
 #include "lms/security/SodiumPasswordHasher.h"
@@ -38,7 +39,8 @@ int main(int argc, char* argv[])
         lms::BootstrapService bootstrap(users, passwords);
         lms::AcademicManagementService academic(authentication, users, users, passwords);
 
-        lms::LoginWindow window(authentication, bootstrap, academic);
+        lms::SubmissionManagementService submissions(authentication, users);
+        lms::LoginWindow window(authentication, bootstrap, academic, submissions);
         window.show();
         return application.exec();
     } catch (const std::exception& error) {
