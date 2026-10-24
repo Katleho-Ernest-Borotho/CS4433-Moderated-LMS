@@ -19,6 +19,8 @@ add_library(lms_core
     src/persistence/SQLiteRecordRepository.cpp
     src/persistence/SQLiteAcademicRepository.cpp
     src/persistence/SQLiteAssignmentsRepository.cpp
+    src/persistence/SQLiteSubmissionRepository.cpp
+    src/persistence/LocalSubmissionContentStore.cpp
     src/security/SodiumPasswordHasher.cpp
     src/application/AuthenticationService.cpp
     src/application/BootstrapService.cpp
