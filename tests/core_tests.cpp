@@ -5,6 +5,7 @@
 #include "lms/domain/UtcDateTime.h"
 #include "lms/domain/User.h"
 #include "lms/persistence/SQLiteRecordRepository.h"
+#include "lms/persistence/LocalSubmissionContentStore.h"
 #include "lms/persistence/SqliteDatabase.h"
 #include "lms/security/SodiumPasswordHasher.h"
 
@@ -13,6 +14,8 @@
 #include <algorithm>
 #include <chrono>
 #include <filesystem>
+#include <fstream>
+#include <iterator>
 #include <memory>
 #include <limits>
 #include <stdexcept>
@@ -591,4 +594,239 @@ TEST_F(AssignmentAndExtensionTests, EffectiveDeadlineIsScopedToCorrectAssignment
     EXPECT_EQ(submissions.effectiveDeadline(student,a.id,student.userId()),extended);
     EXPECT_EQ(submissions.effectiveDeadline(student,b.id,student.userId()),
               "2030-10-31T12:00:00Z");
+}
+
+
+class SubmissionTests : public AssignmentAndExtensionTests {
+protected:
+    std::filesystem::path testFilesDir = std::filesystem::temp_directory_path() /
+        ("lms_submission_tests_" +
+         std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
+    lms::LocalSubmissionContentStore store{testFilesDir.string()};
+    lms::SubmissionManagementService submissionService{authentication,users,users,store};
+    void TearDown() override
+    {
+        std::error_code ignored;
+        std::filesystem::remove_all(testFilesDir,ignored);
+    }
+
+    lms::Assignment makeAssignment(const char* deadline)
+    {
+        const auto lecturer=authentication.logIn("lecturer1","LecturerPassword123!");
+        return management.createAssignment(lecturer,courseId,"Lab 1",deadline,100.0);
+    }
+    lms::Session studentSession()
+    {
+        return authentication.logIn("student1","StudentPassword123!");
+    }
+};
+
+TEST_F(SubmissionTests, StudentCanSubmitTextAndReviewFirstVersion)
+{
+    initialise();
+    const auto a=makeAssignment("2030-10-28T12:00:00Z");
+    const auto first=submissionService.submit(studentSession(),a.id,{"First answer",""});
+    EXPECT_EQ(first.versionNumber,1);
+    EXPECT_FALSE(first.late);
+    EXPECT_EQ(first.text,"First answer");
+    EXPECT_TRUE(first.attachmentRef.empty());
+    auto history=submissionService.listMyVersions(studentSession(),a.id);
+    ASSERT_EQ(history.size(),1U);
+    EXPECT_EQ(history.front().text,"First answer");
+    auto row=users.findFor(studentSession().userId(),a.id);
+    ASSERT_TRUE(row.has_value());
+    EXPECT_EQ(row->state,"Submitted");
+}
+
+TEST_F(SubmissionTests, OnTimeResubmissionRetainsEarlierVersion)
+{
+    initialise();
+    const auto a=makeAssignment("2030-10-28T12:00:00Z");
+    const auto student=studentSession();
+    const auto first=submissionService.submit(student,a.id,{"First draft",""});
+    const auto second=submissionService.submit(student,a.id,{"Improved draft",""});
+    EXPECT_EQ(second.submissionId,first.submissionId);
+    EXPECT_EQ(second.versionNumber,2);
+    EXPECT_NE(second.id,first.id);
+    const auto history=submissionService.listMyVersions(student,a.id);
+    ASSERT_EQ(history.size(),2U);
+    EXPECT_EQ(history.at(0).text,"Improved draft");
+    EXPECT_EQ(history.at(1).text,"First draft");
+    EXPECT_EQ(history.at(1).versionNumber,1);
+}
+
+TEST_F(SubmissionTests, FirstTimeLateSubmissionIsAcceptedAndMarkedLate)
+{
+    initialise();
+    const auto a=makeAssignment("2000-01-01T00:00:00Z");
+    const auto saved=submissionService.submit(studentSession(),a.id,{"Late first attempt",""});
+    EXPECT_TRUE(saved.late);
+    EXPECT_EQ(saved.versionNumber,1);
+    EXPECT_EQ(users.findFor(studentSession().userId(),a.id)->state,"Late");
+}
+
+TEST_F(SubmissionTests, LateReplacementIsRejectedWithoutChangingHistory)
+{
+    initialise();
+    const auto a=makeAssignment("2000-01-01T00:00:00Z");
+    const auto first=submissionService.submit(studentSession(),a.id,{"First late attempt",""});
+    EXPECT_THROW(submissionService.submit(studentSession(),a.id,{"Not allowed",""}),
+                 std::invalid_argument);
+    const auto history=submissionService.listMyVersions(studentSession(),a.id);
+    ASSERT_EQ(history.size(),1U);
+    EXPECT_EQ(history.front().id,first.id);
+    EXPECT_TRUE(history.front().late);
+}
+
+TEST_F(SubmissionTests, IndividualExtensionPermitsReplacementBeforeEffectiveDeadline)
+{
+    initialise();
+    const auto a=makeAssignment("2000-01-01T00:00:00Z");
+    const auto student=studentSession();
+    const auto first=submissionService.submit(student,a.id,{"First late attempt",""});
+    EXPECT_TRUE(first.late);
+    const auto lecturer=authentication.logIn("lecturer1","LecturerPassword123!");
+    submissions.grantExtension(lecturer,a.id,student.userId(),"2030-11-01T12:00:00Z");
+    const auto second=submissionService.submit(student,a.id,{"Improved after extension",""});
+    EXPECT_EQ(second.versionNumber,2);
+    EXPECT_FALSE(second.late);
+    const auto history=submissionService.listMyVersions(student,a.id);
+    ASSERT_EQ(history.size(),2U);
+    EXPECT_TRUE(history.at(1).late);
+}
+
+TEST_F(SubmissionTests, UnenrolledStudentCannotSubmitOrReadAnotherStudentsHistory)
+{
+    initialise();
+    const auto a=makeAssignment("2030-10-28T12:00:00Z");
+    submissionService.submit(studentSession(),a.id,{"Private answer",""});
+    const auto outsider=authentication.logIn("student2","StudentPassword456!");
+    EXPECT_THROW(submissionService.submit(outsider,a.id,{"Not enrolled",""}),
+                 lms::AuthenticationError);
+    EXPECT_THROW(submissionService.listMyVersions(outsider,a.id),
+                 lms::AuthenticationError);
+}
+
+TEST_F(SubmissionTests, LecturerCannotSubmitAsStudent)
+{
+    initialise();
+    const auto a=makeAssignment("2030-10-28T12:00:00Z");
+    const auto lecturer=authentication.logIn("lecturer1","LecturerPassword123!");
+    EXPECT_THROW(submissionService.submit(lecturer,a.id,{"Invalid",""}),
+                 lms::AuthenticationError);
+    EXPECT_THROW(submissionService.listMyVersions(lecturer,a.id),
+                 lms::AuthenticationError);
+}
+
+TEST_F(SubmissionTests, RejectsEmptyAndWhitespaceOnlySubmission)
+{
+    initialise();
+    const auto a=makeAssignment("2030-10-28T12:00:00Z");
+    EXPECT_THROW(submissionService.submit(studentSession(),a.id,{"",""}),
+                 std::invalid_argument);
+    EXPECT_THROW(submissionService.submit(studentSession(),a.id,{"  \t\n",""}),
+                 std::invalid_argument);
+    EXPECT_FALSE(users.findFor(studentSession().userId(),a.id));
+}
+
+TEST_F(SubmissionTests, AttachmentIsCopiedAndCanBeRead)
+{
+    initialise();
+    const auto a=makeAssignment("2030-10-28T12:00:00Z");
+    const auto source=testFilesDir/"answer.txt";
+    {
+        std::ofstream file(source,std::ios::binary);
+        file << "Sample file answer";
+    }
+    const auto saved=submissionService.submit(studentSession(),a.id,{"",source.string()});
+    EXPECT_FALSE(saved.attachmentRef.empty());
+    EXPECT_EQ(saved.versionNumber,1);
+    EXPECT_EQ(store.read(lms::StoredRef{saved.attachmentRef}),"Sample file answer");
+    const auto history=submissionService.listMyVersions(studentSession(),a.id);
+    EXPECT_EQ(history.at(0).attachmentRef,saved.attachmentRef);
+    EXPECT_TRUE(history.at(0).text.empty());
+}
+
+TEST_F(SubmissionTests, AttachmentPersistsAlongsidePreviousVersion)
+{
+    initialise();
+    const auto a=makeAssignment("2030-10-28T12:00:00Z");
+    const auto source=testFilesDir/"first.txt";
+    {
+        std::ofstream file(source,std::ios::binary);
+        file << "Version one file";
+    }
+    const auto first=submissionService.submit(studentSession(),a.id,{"v1",source.string()});
+    const auto second=submissionService.submit(studentSession(),a.id,{"v2",""});
+    EXPECT_EQ(second.versionNumber,2);
+    EXPECT_TRUE(second.attachmentRef.empty());
+    EXPECT_EQ(store.read(lms::StoredRef{first.attachmentRef}),"Version one file");
+}
+
+TEST_F(SubmissionTests, RejectsUnsupportedAttachmentFormat)
+{
+    initialise();
+    const auto a=makeAssignment("2030-10-28T12:00:00Z");
+    const auto source=testFilesDir/"unsafe.exe";
+    { std::ofstream file(source); file << "not a supported file"; }
+    EXPECT_THROW(submissionService.submit(studentSession(),a.id,{"",source.string()}),
+                 std::invalid_argument);
+    EXPECT_FALSE(users.findFor(studentSession().userId(),a.id));
+}
+
+TEST_F(SubmissionTests, RejectsAttachmentLargerThanTenMegabytes)
+{
+    initialise();
+    const auto a=makeAssignment("2030-10-28T12:00:00Z");
+    const auto source=testFilesDir/"too-large.txt";
+    {
+        std::ofstream file(source,std::ios::binary);
+        file.seekp(10*1024*1024);
+        file.put('x');
+    }
+    EXPECT_THROW(submissionService.submit(studentSession(),a.id,{"",source.string()}),
+                 std::invalid_argument);
+    EXPECT_FALSE(users.findFor(studentSession().userId(),a.id));
+}
+
+TEST_F(SubmissionTests, RejectsOversizedSubmissionText)
+{
+    initialise();
+    const auto a=makeAssignment("2030-10-28T12:00:00Z");
+    EXPECT_THROW(submissionService.submit(studentSession(),a.id,
+                 {std::string(50001,'x'),""}),std::invalid_argument);
+    EXPECT_FALSE(users.findFor(studentSession().userId(),a.id));
+}
+
+TEST_F(SubmissionTests, RepoEnforcesDeadlineInsideTransaction)
+{
+    initialise();
+    const auto a=makeAssignment("2000-01-01T00:00:00Z");
+    const auto student=studentSession();
+    const auto first=users.saveVersion(student.userId(),a.id,"first","",
+                                      "1999-12-31T23:59:59Z");
+    EXPECT_EQ(first.versionNumber,1);
+    EXPECT_THROW(users.saveVersion(student.userId(),a.id,"late replacement","",
+                 "2000-01-01T00:00:01Z"),std::invalid_argument);
+    const auto history=users.listVersions(student.userId(),a.id);
+    EXPECT_EQ(history.size(),1U);
+}
+
+TEST_F(SubmissionTests, RepositoryAcceptsReplacementExactlyAtEffectiveDeadline)
+{
+    initialise();
+    const auto a=makeAssignment("2030-10-28T12:00:00Z");
+    const auto student=studentSession();
+    users.saveVersion(student.userId(),a.id,"draft","",
+                      "2030-10-28T11:59:59Z");
+    const auto second=users.saveVersion(student.userId(),a.id,"on time","",
+                                       "2030-10-28T12:00:00Z");
+    EXPECT_EQ(second.versionNumber,2);
+    EXPECT_FALSE(second.late);
+}
+
+TEST_F(SubmissionTests, InvalidAttachmentRefIsNotReadOrDeleted)
+{
+    EXPECT_THROW(store.read(lms::StoredRef{"../../escape.txt"}),std::invalid_argument);
+    EXPECT_NO_THROW(store.remove(lms::StoredRef{"../../escape.txt"}));
 }
