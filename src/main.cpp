@@ -1,14 +1,15 @@
+#include "lms/application/AuthenticationService.h"
+#include "lms/application/BootstrapService.h"
+#include "lms/persistence/SQLiteRecordRepository.h"
 #include "lms/persistence/SqliteDatabase.h"
+#include "lms/security/SodiumPasswordHasher.h"
+#include "lms/ui/LoginWindow.h"
 
 #include <QApplication>
 #include <QCoreApplication>
 #include <QDir>
-#include <QLabel>
-#include <QMainWindow>
 #include <QMessageBox>
 #include <QStandardPaths>
-#include <QVBoxLayout>
-#include <QWidget>
 
 #include <exception>
 #include <stdexcept>
@@ -20,7 +21,8 @@ int main(int argc, char* argv[])
     application.setOrganizationName("CS4433");
 
     try {
-        const QString dataDirectory = QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation);
+        const QString dataDirectory =
+            QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation);
         if (dataDirectory.isEmpty() || !QDir().mkpath(dataDirectory)) {
             throw std::runtime_error("Cannot create the application data folder");
         }
@@ -29,18 +31,12 @@ int main(int argc, char* argv[])
         const QString schemaFile = QCoreApplication::applicationDirPath() + "/lms_schema.sql";
         database.initializeSchemaFromFile(schemaFile.toStdString());
 
-        QMainWindow window;
-        window.setWindowTitle("Moderated Learning Management System");
-        auto* central = new QWidget(&window);
-        auto* layout = new QVBoxLayout(central);
-        auto* title = new QLabel("Moderated Learning Management System", central);
-        title->setAlignment(Qt::AlignCenter);
-        auto* status = new QLabel("Local database is ready", central);
-        status->setAlignment(Qt::AlignCenter);
-        layout->addWidget(title);
-        layout->addWidget(status);
-        window.setCentralWidget(central);
-        window.resize(650, 350);
+        lms::SQLiteRecordRepository users(database);
+        lms::SodiumPasswordHasher passwords;
+        lms::AuthenticationService authentication(users, passwords);
+        lms::BootstrapService bootstrap(users, passwords);
+
+        lms::LoginWindow window(authentication, bootstrap);
         window.show();
         return application.exec();
     } catch (const std::exception& error) {
