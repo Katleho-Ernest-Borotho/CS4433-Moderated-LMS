@@ -1,6 +1,8 @@
 #include "lms/application/AcademicManagementService.h"
 #include "lms/application/AuthenticationService.h"
 #include "lms/application/BootstrapService.h"
+#include "lms/application/SubmissionManagementService.h"
+#include "lms/domain/UtcDateTime.h"
 #include "lms/domain/User.h"
 #include "lms/persistence/SQLiteRecordRepository.h"
 #include "lms/persistence/SqliteDatabase.h"
@@ -12,6 +14,7 @@
 #include <chrono>
 #include <filesystem>
 #include <memory>
+#include <limits>
 #include <stdexcept>
 #include <string>
 
@@ -409,4 +412,183 @@ TEST_F(UserManagementTests, DeactivatedAccountCannotReadVisibleCourses)
     management.enrolStudent(admin, student.id, course.id);
     management.deactivateUser(admin, student.id);
     EXPECT_THROW(management.listVisibleCourses(loggedIn), lms::AuthenticationError);
+}
+
+
+class AssignmentAndExtensionTests : public UserManagementTests {
+protected:
+    lms::SubmissionManagementService submissions{authentication,users};
+
+    void initialise()
+    {
+        bootstrap.createInitialAdministrator("admin1", "LongSecretPassword123!");
+        const auto admin=authentication.logIn("admin1","LongSecretPassword123!");
+        const auto dep=management.createDepartment(admin,"Computing");
+        const auto course=management.createCourse(admin,dep.id,"CS4433","Software Engineering");
+        management.createUser(admin,"lecturer1","LecturerPassword123!",lms::Role::Lecturer);
+        management.createUser(admin,"lecturer2","LecturerPassword456!",lms::Role::Lecturer);
+        management.createUser(admin,"student1","StudentPassword123!",lms::Role::Student);
+        management.createUser(admin,"student2","StudentPassword456!",lms::Role::Student);
+        const auto lecturer=authentication.logIn("lecturer1","LecturerPassword123!");
+        const auto student=authentication.logIn("student1","StudentPassword123!");
+        management.assignLecturer(admin,lecturer.userId(),course.id);
+        management.enrolStudent(admin,student.userId(),course.id);
+        courseId=course.id;
+    }
+    std::int64_t courseId=0;
+    static constexpr const char* original="2030-10-28T12:00:00Z";
+    static constexpr const char* extended="2030-10-30T12:00:00Z";
+};
+
+TEST_F(AssignmentAndExtensionTests, AssignedLecturerCanCreateAssignment)
+{
+    initialise();
+    const auto lecturer=authentication.logIn("lecturer1","LecturerPassword123!");
+    auto a=management.createAssignment(lecturer,courseId,"Lab 1",original,100.0);
+    EXPECT_GT(a.id,0);
+    EXPECT_EQ(a.courseId,courseId);
+    EXPECT_EQ(a.deadlineUtc,original);
+    const auto list=management.listCourseAssignments(lecturer,courseId);
+    ASSERT_EQ(list.size(),1U);
+    EXPECT_EQ(list[0].title,"Lab 1");
+    EXPECT_EQ(list[0].maximumMark,100.0);
+}
+
+TEST_F(AssignmentAndExtensionTests, UnassignedLecturerCannotCreateOrInspectAssignments)
+{
+    initialise();
+    const auto first=authentication.logIn("lecturer1","LecturerPassword123!");
+    const auto other=authentication.logIn("lecturer2","LecturerPassword456!");
+    management.createAssignment(first,courseId,"Lab 1",original,100.0);
+    EXPECT_THROW(management.createAssignment(other,courseId,"Wrong",original,100.0),
+                 lms::AuthenticationError);
+    EXPECT_THROW(management.listCourseAssignments(other,courseId),
+                 lms::AuthenticationError);
+}
+
+TEST_F(AssignmentAndExtensionTests, EnrolledStudentCanSeeAssignmentButOtherCannot)
+{
+    initialise();
+    const auto lecturer=authentication.logIn("lecturer1","LecturerPassword123!");
+    const auto own=authentication.logIn("student1","StudentPassword123!");
+    const auto other=authentication.logIn("student2","StudentPassword456!");
+    management.createAssignment(lecturer,courseId,"Lab 1",original,100.0);
+    ASSERT_EQ(management.listCourseAssignments(own,courseId).size(),1U);
+    EXPECT_THROW(management.listCourseAssignments(other,courseId),
+                 lms::AuthenticationError);
+    EXPECT_THROW(management.createAssignment(own,courseId,"Wrong",original,100.0),
+                 lms::AuthenticationError);
+}
+
+TEST_F(AssignmentAndExtensionTests, LecturerGrantsIndividualExtensionOnlyToEnrolledStudent)
+{
+    initialise();
+    const auto lecturer=authentication.logIn("lecturer1","LecturerPassword123!");
+    const auto own=authentication.logIn("student1","StudentPassword123!");
+    const auto other=authentication.logIn("student2","StudentPassword456!");
+    const auto a=management.createAssignment(lecturer,courseId,"Lab 1",original,100.0);
+    EXPECT_EQ(submissions.effectiveDeadline(own,a.id,own.userId()),original);
+    submissions.grantExtension(lecturer,a.id,own.userId(),extended);
+    EXPECT_EQ(submissions.effectiveDeadline(own,a.id,own.userId()),extended);
+    EXPECT_THROW(submissions.effectiveDeadline(other,a.id,own.userId()),
+                 lms::AuthenticationError);
+    EXPECT_THROW(submissions.grantExtension(lecturer,a.id,other.userId(),extended),
+                 std::invalid_argument);
+}
+
+TEST_F(AssignmentAndExtensionTests, CannotShortenAnExtensionAndCanExtendFurther)
+{
+    initialise();
+    const auto lecturer=authentication.logIn("lecturer1","LecturerPassword123!");
+    const auto own=authentication.logIn("student1","StudentPassword123!");
+    const auto a=management.createAssignment(lecturer,courseId,"Lab 1",original,100.0);
+    submissions.grantExtension(lecturer,a.id,own.userId(),extended);
+    EXPECT_THROW(submissions.grantExtension(lecturer,a.id,own.userId(),original),
+                 std::invalid_argument);
+    EXPECT_THROW(submissions.grantExtension(lecturer,a.id,own.userId(),extended),
+                 std::invalid_argument);
+    submissions.grantExtension(lecturer,a.id,own.userId(),"2030-11-01T12:00:00Z");
+    EXPECT_EQ(submissions.effectiveDeadline(own,a.id,own.userId()),
+              "2030-11-01T12:00:00Z");
+}
+
+TEST_F(AssignmentAndExtensionTests, UnassignedLecturerAndStudentCannotGrantExtension)
+{
+    initialise();
+    const auto lecturer=authentication.logIn("lecturer1","LecturerPassword123!");
+    const auto other=authentication.logIn("lecturer2","LecturerPassword456!");
+    const auto student=authentication.logIn("student1","StudentPassword123!");
+    const auto a=management.createAssignment(lecturer,courseId,"Lab 1",original,100.0);
+    EXPECT_THROW(submissions.grantExtension(other,a.id,student.userId(),extended),
+                 lms::AuthenticationError);
+    EXPECT_THROW(submissions.grantExtension(student,a.id,student.userId(),extended),
+                 lms::AuthenticationError);
+    EXPECT_EQ(submissions.effectiveDeadline(student,a.id,student.userId()),original);
+}
+
+TEST_F(AssignmentAndExtensionTests, AssignedLecturerCanListOnlyOwnEnrolledStudents)
+{
+    initialise();
+    const auto lecturer=authentication.logIn("lecturer1","LecturerPassword123!");
+    const auto other=authentication.logIn("lecturer2","LecturerPassword456!");
+    const auto students=management.listEnrolledStudentsForCourse(lecturer,courseId);
+    ASSERT_EQ(students.size(),1U);
+    EXPECT_EQ(students[0].username,"student1");
+    EXPECT_THROW(management.listEnrolledStudentsForCourse(other,courseId),
+                 lms::AuthenticationError);
+}
+
+TEST_F(AssignmentAndExtensionTests, DatesAreStrictUTCAndValidateCalendar)
+{
+    EXPECT_NO_THROW(lms::validateUtcDateTime("2028-02-29T23:59:59Z"));
+    EXPECT_THROW(lms::validateUtcDateTime("2030-02-29T12:00:00Z"),std::invalid_argument);
+    EXPECT_THROW(lms::validateUtcDateTime("2030-13-01T12:00:00Z"),std::invalid_argument);
+    EXPECT_THROW(lms::validateUtcDateTime("2030-10-28T25:00:00Z"),std::invalid_argument);
+    EXPECT_THROW(lms::validateUtcDateTime("2030-10-28 12:00:00"),std::invalid_argument);
+    EXPECT_THROW(lms::validateUtcDateTime("2030-10-28T12:00:00+02:00"),std::invalid_argument);
+}
+
+TEST_F(AssignmentAndExtensionTests, RejectsInvalidAssignmentAndExtensionInputs)
+{
+    initialise();
+    const auto lecturer=authentication.logIn("lecturer1","LecturerPassword123!");
+    const auto student=authentication.logIn("student1","StudentPassword123!");
+    EXPECT_THROW(management.createAssignment(lecturer,courseId,"",original,100.0),
+                 std::invalid_argument);
+    EXPECT_THROW(management.createAssignment(lecturer,courseId,"Lab 1",original,0.0),
+                 std::invalid_argument);
+    EXPECT_THROW(management.createAssignment(lecturer,courseId,"Lab 1",original,
+                   std::numeric_limits<double>::infinity()),std::invalid_argument);
+    EXPECT_THROW(management.createAssignment(lecturer,courseId,"Lab 1",
+                   "2030-02-29T12:00:00Z",100.0),std::invalid_argument);
+    const auto a=management.createAssignment(lecturer,courseId,"Lab 1",original,100.0);
+    EXPECT_THROW(submissions.grantExtension(lecturer,a.id,student.userId(),
+                 "2030-10-30 12:00:00"),std::invalid_argument);
+}
+
+TEST_F(AssignmentAndExtensionTests, DeactivatedLecturerCannotCreateOrExtend)
+{
+    initialise();
+    const auto admin=authentication.logIn("admin1","LongSecretPassword123!");
+    const auto lecturer=authentication.logIn("lecturer1","LecturerPassword123!");
+    const auto student=authentication.logIn("student1","StudentPassword123!");
+    const auto a=management.createAssignment(lecturer,courseId,"Lab 1",original,100.0);
+    management.deactivateUser(admin,lecturer.userId());
+    EXPECT_THROW(management.createAssignment(lecturer,courseId,"Lab 2",original,100.0),
+                 lms::AuthenticationError);
+    EXPECT_THROW(submissions.grantExtension(lecturer,a.id,student.userId(),extended),
+                 lms::AuthenticationError);
+}
+
+TEST_F(AssignmentAndExtensionTests, EffectiveDeadlineIsScopedToCorrectAssignment)
+{
+    initialise();
+    const auto lecturer=authentication.logIn("lecturer1","LecturerPassword123!");
+    const auto student=authentication.logIn("student1","StudentPassword123!");
+    const auto a=management.createAssignment(lecturer,courseId,"Lab 1",original,100.0);
+    const auto b=management.createAssignment(lecturer,courseId,"Lab 2","2030-10-31T12:00:00Z",50.0);
+    submissions.grantExtension(lecturer,a.id,student.userId(),extended);
+    EXPECT_EQ(submissions.effectiveDeadline(student,a.id,student.userId()),extended);
+    EXPECT_EQ(submissions.effectiveDeadline(student,b.id,student.userId()),
+              "2030-10-31T12:00:00Z");
 }
