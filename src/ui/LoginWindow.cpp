@@ -2,6 +2,7 @@
 #include "lms/ui/AcademicPanel.h"
 #include "lms/ui/AssignmentPanel.h"
 #include "lms/ui/MarkingPanel.h"
+#include "lms/ui/ResultsPanel.h"
 
 #include <QAbstractItemView>
 #include <QComboBox>
@@ -54,8 +55,8 @@ LoginWindow::LoginWindow(IAuthenticationService& authentication,
                          BootstrapService& bootstrap,
                          IAcademicManagementService& accounts,
                          ISubmissionService& submissions,
-                         IMarkingService& marking)
-    : authentication_(authentication), bootstrap_(bootstrap), accounts_(accounts), submissions_(submissions), marking_(marking)
+                         IMarkingService& marking, IModerationService& moderation)
+    : authentication_(authentication), bootstrap_(bootstrap), accounts_(accounts), submissions_(submissions), marking_(marking), moderation_(moderation)
 {
     setWindowTitle("Moderated Learning Management System");
     setMinimumSize(700, 520);
@@ -218,10 +219,12 @@ QWidget* LoginWindow::createDashboardPage()
     learningTabs_->addTab(assignmentsPanel_, "Assignments and extensions");
     markingPanel_ = new MarkingPanel(accounts_, marking_, session_, learningTabs_);
     learningTabs_->addTab(markingPanel_, "Marking");
+    resultsPanel_ = new ResultsPanel(moderation_, session_, learningTabs_);
+    learningTabs_->addTab(resultsPanel_, "Results and moderation");
     layout->addWidget(learningTabs_);
 
     auto* information = new QLabel(
-        "Courses, assignments and submissions are available. Marking, moderation and result release are still under development.",
+        "The LMS includes academic records, submissions, lecturer marking and moderated result release.",
         page);
     information->setWordWrap(true);
     information->setAlignment(Qt::AlignCenter);
@@ -284,6 +287,8 @@ void LoginWindow::showDashboard()
     learningTabs_->setTabVisible(1, session_->role()==Role::Lecturer ||
                                    session_->role()==Role::Student);
     learningTabs_->setTabVisible(2, session_->role()==Role::Lecturer);
+    learningTabs_->setTabVisible(3, session_->role()==Role::HeadOfDepartment ||
+                                   session_->role()==Role::Student);
     learningTabs_->setCurrentIndex(0);
     pages_->setCurrentWidget(dashboardPage_);
     if (administrator) {
@@ -306,6 +311,9 @@ void LoginWindow::showDashboard()
                 assignmentsPanel_->refresh();
             if(session_->role()==Role::Lecturer)
                 markingPanel_->refresh();
+            if(session_->role()==Role::HeadOfDepartment ||
+               session_->role()==Role::Student)
+                resultsPanel_->refresh();
         } catch (const std::exception&) {
             QMessageBox::warning(this, "Courses", "Unable to load your assigned courses.");
             logOut();
