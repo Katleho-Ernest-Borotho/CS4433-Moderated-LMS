@@ -3,6 +3,7 @@
 #include "lms/application/BootstrapService.h"
 #include "lms/application/IAuthenticationService.h"
 #include "lms/application/IAcademicManagementService.h"
+#include "lms/application/ISubmissionService.h"
 
 #include <QMainWindow>
 #include <optional>
@@ -17,10 +18,11 @@ class QWidget;
 
 namespace lms {
 class AcademicPanel;
+class AssignmentPanel;
 class LoginWindow final : public QMainWindow {
 public:
     LoginWindow(IAuthenticationService& authentication, BootstrapService& bootstrap,
-                IAcademicManagementService& accounts);
+                IAcademicManagementService& accounts, ISubmissionService& submissions);
 
 private:
     QWidget* createSetupPage();
@@ -38,6 +40,7 @@ private:
     IAuthenticationService& authentication_;
     BootstrapService& bootstrap_;
     IAcademicManagementService& accounts_;
+    ISubmissionService& submissions_;
     QStackedWidget* pages_ = nullptr;
     QWidget* setupPage_ = nullptr;
     QWidget* loginPage_ = nullptr;
@@ -45,6 +48,8 @@ private:
     QWidget* adminPanel_ = nullptr;
     AcademicPanel* academicPanel_ = nullptr;
     QTabWidget* adminTabs_ = nullptr;
+    QTabWidget* learningTabs_ = nullptr;
+    AssignmentPanel* assignmentsPanel_ = nullptr;
     QTableWidget* myCoursesTable_ = nullptr;
     QLineEdit* setupUsername_ = nullptr;
     QLineEdit* setupPassword_ = nullptr;
