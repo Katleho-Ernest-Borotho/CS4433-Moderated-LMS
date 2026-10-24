@@ -1,10 +1,10 @@
-# Building and Testing the Moderated LMS
+# Build and Test the Moderated LMS
 
-Windows development: MSYS2 UCRT64, C++17, Qt 6 Widgets, SQLite, libsodium, CMake, Ninja, GoogleTest.
+Development platform: MSYS2 UCRT64, GCC C++17, Qt 6 Widgets, SQLite, libsodium, CMake, Ninja and GoogleTest.
 
-## Update the project in Git Bash
+## Update the source code
 
-Close the running LMS before rebuilding.
+Close the running LMS application. Open **Git Bash**:
 
 ```bash
 cd /c/Users/borot/OneDrive/Desktop/CS4433-Moderated-LMS
@@ -12,7 +12,9 @@ git switch feature/phase4-implementation
 git pull --ff-only origin feature/phase4-implementation
 ```
 
-## Build, test and run in MSYS2 UCRT64
+## Build and run the tests
+
+Open **MSYS2 UCRT64**:
 
 ```bash
 cd /c/Users/borot/OneDrive/Desktop/CS4433-Moderated-LMS
@@ -22,40 +24,38 @@ ctest --test-dir /c/dev/cs4433-lms-build --output-on-failure
 /c/dev/cs4433-lms-build/ModeratedLMS.exe
 ```
 
-Alternatively, open CMakeLists.txt from Qt Creator using the CS4433 Qt 6 UCRT64 kit. Use a build folder outside the OneDrive repository.
+The source suite now contains 55 GoogleTest cases. This is a target, not a claim that the current commit has passed on the user's laptop. Report the **first error** from the build output if it fails.
 
-## Local storage
+## Existing data
 
-The program keeps its database under the Windows local application-data directory for CS4433/ModeratedLMS. Updating the program does **not** remove accounts, courses, enrolments or existing assignments. The approved twelve-table SQLite schema is unchanged in this checkpoint. The application is offline.
+The SQLite database remains under the Windows local application-data directory for `CS4433/ModeratedLMS`. Its original **12-table approved Week 3 schema is unchanged**; do not delete the database to update the program. The initial Administrator, Student, Lecturer and existing course records should remain in place.
 
-## Checkpoint walkthrough — two new features together
+## Readable deadline display
 
-### Feature A: Lecturer creates assignments (FR-08)
+The assignment grid presents deadlines in the computer's local timezone, for example `31 Oct 2026, 03:22`, rather than raw `2026-10-31T01:22:48Z` values. Stored deadline timestamps remain in UTC for calculations. Existing original timestamps keep their exact seconds, available in the grid's hover tooltip. When creating a new deadline with the minute-based editor, seconds are set to `00`.
 
-1. Sign in as Administrator. In **User management**, create a temporary Lecturer account if none exists.
-2. In **Academic management**, assign this lecturer to the existing CS4433 course. The student must already be enrolled in that course.
-3. Log out and log in as the Lecturer.
-4. Open **Assignments and extensions**, choose CS4433.
-5. Fill in a title such as "Lab 1", select the deadline using local date/time, set a maximum mark such as 100, and choose **Create assignment**.
-6. Confirm that the new assignment appears in the list. The chosen time is stored in SQLite as UTC; the application uses the system's local time zone in its date editors.
+## Paired workflow: first submission (FR-11) and versioned resubmission (FR-12)
 
-### Feature B: Individual deadline extension (FR-09)
+1. As Administrator, ensure a Lecturer is assigned to CS4433 and a Student is enrolled.
+2. As that Lecturer, create an assignment and choose a future deadline.
+3. As the Student, open **Assignments and extensions**, select CS4433 and choose the assignment under **Submit assignment**.
+4. Type an answer, choose an optional PDF, DOCX or TXT file, or provide only a file. Attachments must be between 1 byte and 10 MiB. Click **Submit / Resubmit**.
+5. Confirm that **Version 1** appears in the Student's submission-history grid.
+6. Before the effective deadline, change the response and submit again; confirm **Version 2** is listed while **Version 1** remains.
+7. Close and reopen the app to verify both versions persist in SQLite. The Student's saved text can be reviewed in the history panel. Uploaded attachments are stored locally and listed as **Saved**; opening/downloading them from the GUI is not implemented yet.
 
-1. While logged in as that Lecturer, choose the newly created assignment and the enrolled Student.
-2. Observe the student's current effective deadline.
-3. Choose a later new deadline and select **Grant individual extension**.
-4. Confirm that the effective deadline changes. Extensions are attached to one Student and one Assignment; no whole-class extension is created.
-5. Log out and log in as that Student. Open **Assignments and extensions**. The Student should see the assignment with both the original deadline and the individual effective deadline.
-6. Check that another unenrolled student cannot see the assignment and that an unassigned lecturer cannot edit it.
+**Deadline rules:** The first submission is accepted even after the effective deadline, and is classified as Late. A resubmission/replacement is permitted only on or before the individual effective deadline. A lecturer's extension may permit a later replacement; previous versions remain immutable. The late-penalty calculation and marking module will be implemented in subsequent checkpoints.
 
-Repeat these tests after restarting the application to verify persistence.
+## Security and content storage
 
-## Security and business rules
+- Service methods authenticate the Student role and check that the Student is actively enrolled in the assignment's course.
+- A Student can view only their own submission-version history.
+- SQL statements are parameterised and the submission and version rows are committed in one SQLite transaction.
+- Files are copied to a private local storage directory, with random opaque names rather than the originally supplied filename.
+- The application checks the attachment extension (PDF, DOCX or TXT) and the size limit; file-content validation and virus scanning are not yet implemented.
+- Attachment file operations and SQLite transactions cannot be made fully atomic as one filesystem/SQL transaction. The implementation attempts cleanup if the database write fails; crash-recovery and orphan-file reconciliation are still pending.
+- Use **demonstration data only** until backup/recovery and final security checks are complete.
 
-The GUI calls application services rather than using SQL. An authenticated Lecturer may create assignments and grant extensions only for courses assigned to that Lecturer. A grant applies only to an active, enrolled Student. An extension must be later than the student's current effective deadline; it cannot shorten the deadline. Inputs use canonical UTC YYYY-MM-DDTHH:MM:SSZ format and validation checks the calendar date. The maximum mark must be positive and finite.
+## Remaining core requirements
 
-Students can read only assignments in courses they are enrolled in, and can see only their own effective deadlines. The SQLite layer uses parameterised queries and transactions. There are now 39 registered GoogleTest cases covering previous features and the new assignment/extension permissions and boundaries.
-
-## Implementation status
-
-The two new features and tests have been committed, but they still require a successful build and test run on the development laptop. Submissions, resubmission rules, late penalties, marking, moderation, mark-change audit and release of results are **not** implemented yet. Do not use real student information before backup, recovery and full security testing are complete.
+Late penalty/marking (FR-13/FR-14), moderation and release (FR-15/FR-17), and complete mark-change auditing (FR-18) are not yet implemented. Full file-viewing, user-account editing, and some additional administrative functions also remain.
