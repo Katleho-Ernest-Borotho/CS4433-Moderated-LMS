@@ -217,7 +217,7 @@ QWidget* LoginWindow::createDashboardPage()
     layout->addWidget(learningTabs_);
 
     auto* information = new QLabel(
-        "Academic courses and assignments are available. Submission, marking and moderation are still under development.",
+        "Courses, assignments and submissions are available. Marking, moderation and result release are still under development.",
         page);
     information->setWordWrap(true);
     information->setAlignment(Qt::AlignCenter);
