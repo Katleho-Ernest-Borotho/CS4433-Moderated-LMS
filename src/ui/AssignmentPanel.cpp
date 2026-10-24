@@ -19,6 +19,7 @@
 #include <QScrollArea>
 #include <QTableWidget>
 #include <QTableWidgetItem>
+#include <QTime>
 #include <QTextEdit>
 #include <QVBoxLayout>
 #include <QVariant>
@@ -225,6 +226,12 @@ void AssignmentPanel::refresh()
         creationGroup_->setVisible(lecturer);
         extensionGroup_->setVisible(lecturer);
         studentSubmissionGroup_->setVisible(!lecturer);
+        // Discard unsent UI state whenever a new account logs in.
+        submissionText_->clear();
+        attachmentPath_->clear();
+        savedText_->clear();
+        savedVersions_.clear();
+        versionHistory_->setRowCount(0);
         const auto courses=academic_.listVisibleCourses(actor());
         const QSignalBlocker block(courses_);
         const auto previous=courses_->currentData().toLongLong();
