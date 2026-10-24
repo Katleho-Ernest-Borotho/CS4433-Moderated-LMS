@@ -22,6 +22,7 @@ add_library(lms_core
     src/persistence/SQLiteAssignmentsRepository.cpp
     src/persistence/SQLiteSubmissionRepository.cpp
     src/persistence/SQLiteAssessmentRepository.cpp
+    src/persistence/SQLiteModerationRepository.cpp
     src/persistence/LocalSubmissionContentStore.cpp
     src/security/SodiumPasswordHasher.cpp
     src/application/AuthenticationService.cpp
@@ -29,6 +30,7 @@ add_library(lms_core
     src/application/AcademicManagementService.cpp
     src/application/SubmissionManagementService.cpp
     src/application/MarkingService.cpp
+    src/application/ModerationService.cpp
 )
 target_include_directories(lms_core PUBLIC include)
 target_link_libraries(lms_core PUBLIC SQLite::SQLite3 PkgConfig::SODIUM)
@@ -39,6 +41,7 @@ qt_add_executable(ModeratedLMS
     src/ui/AcademicPanel.cpp
     src/ui/AssignmentPanel.cpp
     src/ui/MarkingPanel.cpp
+    src/ui/ResultsPanel.cpp
 )
 target_link_libraries(ModeratedLMS PRIVATE Qt6::Widgets lms_core)
 
