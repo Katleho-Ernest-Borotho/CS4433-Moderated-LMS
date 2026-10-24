@@ -189,7 +189,7 @@ TEST_F(AuthenticationTests, PreparedUsernameQueryDoesNotPermitSqlInjection)
 
 class UserManagementTests : public AuthenticationTests {
 protected:
-    lms::AcademicManagementService management{authentication, users, passwords};
+    lms::AcademicManagementService management{authentication, users, users, passwords};
 };
 
 TEST_F(UserManagementTests, AdministratorCanCreateAllFourRolesAndListAccounts)
@@ -274,4 +274,139 @@ TEST_F(UserManagementTests, RejectsInvalidNewAccountCredentials)
     EXPECT_THROW(management.createUser(admin, "' OR 1=1 --", "LongEnoughSecret123!",
                                       lms::Role::Student), std::invalid_argument);
     EXPECT_EQ(management.listUsers(admin).size(), 1U);
+}
+
+TEST_F(UserManagementTests, AdministratorCreatesUpdatesAndListsDepartmentsAndCourses)
+{
+    bootstrap.createInitialAdministrator("admin", "LongSecretPassword123!");
+    const auto actor = authentication.logIn("admin", "LongSecretPassword123!");
+    auto department = management.createDepartment(actor, "Computing");
+    EXPECT_EQ(department.name, "Computing");
+    const auto course = management.createCourse(actor, department.id,
+        "CS4433", "Software Engineering");
+    ASSERT_EQ(management.listDepartments(actor).size(), 1U);
+    ASSERT_EQ(management.listAllCourses(actor).size(), 1U);
+    department.name = "Computer Science";
+    management.updateDepartment(actor, department);
+    EXPECT_EQ(management.listDepartments(actor).at(0).name, "Computer Science");
+    auto updated = course;
+    updated.title = "Software Engineering II";
+    management.updateCourse(actor, updated);
+    EXPECT_EQ(management.listAllCourses(actor).at(0).title, "Software Engineering II");
+}
+
+TEST_F(UserManagementTests, StudentSeesOnlyOwnEnrolledCourses)
+{
+    bootstrap.createInitialAdministrator("admin", "LongSecretPassword123!");
+    const auto admin = authentication.logIn("admin", "LongSecretPassword123!");
+    const auto department = management.createDepartment(admin, "Computing");
+    const auto first = management.createCourse(admin, department.id, "CS4433", "Software Engineering");
+    management.createCourse(admin, department.id, "CS4441", "Networks");
+    management.createUser(admin, "student1", "StudentPassword123!", lms::Role::Student);
+    management.createUser(admin, "student2", "StudentPassword456!", lms::Role::Student);
+    const auto firstStudent = authentication.logIn("student1", "StudentPassword123!");
+    const auto secondStudent = authentication.logIn("student2", "StudentPassword456!");
+    EXPECT_TRUE(management.listVisibleCourses(firstStudent).empty());
+    management.enrolStudent(admin, firstStudent.userId(), first.id);
+    const auto visible = management.listVisibleCourses(firstStudent);
+    ASSERT_EQ(visible.size(), 1U);
+    EXPECT_EQ(visible.at(0).code, "CS4433");
+    EXPECT_TRUE(management.listVisibleCourses(secondStudent).empty());
+    EXPECT_EQ(management.listVisibleCourses(admin).size(), 2U);
+}
+
+TEST_F(UserManagementTests, LecturerCanOnlySeeAssignedCourses)
+{
+    bootstrap.createInitialAdministrator("admin", "LongSecretPassword123!");
+    const auto admin = authentication.logIn("admin", "LongSecretPassword123!");
+    const auto department = management.createDepartment(admin, "Computing");
+    management.createCourse(admin, department.id, "CS4433", "Software Engineering");
+    const auto second = management.createCourse(admin, department.id, "CS4441", "Networks");
+    management.createUser(admin, "lecturer1", "LecturerPassword123!", lms::Role::Lecturer);
+    const auto lecturer = authentication.logIn("lecturer1", "LecturerPassword123!");
+    EXPECT_TRUE(management.listVisibleCourses(lecturer).empty());
+    management.assignLecturer(admin, lecturer.userId(), second.id);
+    const auto visible = management.listVisibleCourses(lecturer);
+    ASSERT_EQ(visible.size(), 1U);
+    EXPECT_EQ(visible.at(0).code, "CS4441");
+}
+
+TEST_F(UserManagementTests, HoDCanOnlySeeOwnDepartmentCourses)
+{
+    bootstrap.createInitialAdministrator("admin", "LongSecretPassword123!");
+    const auto admin = authentication.logIn("admin", "LongSecretPassword123!");
+    const auto computing = management.createDepartment(admin, "Computing");
+    const auto electrical = management.createDepartment(admin, "Electrical Engineering");
+    management.createCourse(admin, computing.id, "CS4433", "Software Engineering");
+    management.createCourse(admin, electrical.id, "EE4401", "Digital Circuit Design");
+    management.createUser(admin, "hod1", "DepartmentPass123!", lms::Role::HeadOfDepartment);
+    const auto hod = authentication.logIn("hod1", "DepartmentPass123!");
+    management.assignHoD(admin, hod.userId(), computing.id);
+    const auto visible = management.listVisibleCourses(hod);
+    ASSERT_EQ(visible.size(), 1U);
+    EXPECT_EQ(visible.at(0).code, "CS4433");
+}
+
+TEST_F(UserManagementTests, StudentCannotUseAcademicAdministrationService)
+{
+    bootstrap.createInitialAdministrator("admin", "LongSecretPassword123!");
+    const auto admin = authentication.logIn("admin", "LongSecretPassword123!");
+    const auto dep = management.createDepartment(admin, "Computing");
+    const auto course = management.createCourse(admin, dep.id, "CS4433", "Software Engineering");
+    management.createUser(admin, "student1", "StudentPassword123!", lms::Role::Student);
+    const auto student = authentication.logIn("student1", "StudentPassword123!");
+    EXPECT_THROW(management.createDepartment(student, "Wrong"), lms::AuthenticationError);
+    EXPECT_THROW(management.listDepartments(student), lms::AuthenticationError);
+    EXPECT_THROW(management.listAllCourses(student), lms::AuthenticationError);
+    EXPECT_THROW(management.createCourse(student, dep.id, "CS9999", "Unauthorized"), lms::AuthenticationError);
+    EXPECT_THROW(management.enrolStudent(student, student.userId(), course.id), lms::AuthenticationError);
+    EXPECT_THROW(management.assignLecturer(student, student.userId(), course.id), lms::AuthenticationError);
+}
+
+TEST_F(UserManagementTests, AssignmentsRequireCorrectActiveRoles)
+{
+    bootstrap.createInitialAdministrator("admin", "LongSecretPassword123!");
+    const auto admin = authentication.logIn("admin", "LongSecretPassword123!");
+    const auto dep = management.createDepartment(admin, "Computing");
+    const auto course = management.createCourse(admin, dep.id, "CS4433", "Software Engineering");
+    const auto student = management.createUser(admin, "student1", "StudentPassword123!", lms::Role::Student);
+    EXPECT_THROW(management.assignLecturer(admin, student.id, course.id), std::invalid_argument);
+    EXPECT_THROW(management.assignHoD(admin, student.id, dep.id), std::invalid_argument);
+    EXPECT_NO_THROW(management.enrolStudent(admin, student.id, course.id));
+    EXPECT_THROW(management.enrolStudent(admin, student.id, course.id), std::exception);
+}
+
+TEST_F(UserManagementTests, DuplicateCourseCodeAndDepartmentNamesAreRejected)
+{
+    bootstrap.createInitialAdministrator("admin", "LongSecretPassword123!");
+    const auto actor = authentication.logIn("admin", "LongSecretPassword123!");
+    const auto dep = management.createDepartment(actor, "Computing");
+    EXPECT_THROW(management.createDepartment(actor, "computing"), std::exception);
+    management.createCourse(actor, dep.id, "CS4433", "Software Engineering");
+    EXPECT_THROW(management.createCourse(actor, dep.id, "cs4433", "Duplicate"), std::exception);
+    EXPECT_EQ(management.listAllCourses(actor).size(), 1U);
+}
+
+TEST_F(UserManagementTests, CannotCreateCoursesUnderMissingDepartments)
+{
+    bootstrap.createInitialAdministrator("admin", "LongSecretPassword123!");
+    const auto actor = authentication.logIn("admin", "LongSecretPassword123!");
+    EXPECT_THROW(management.createCourse(actor, 999999, "CS4433", "Software Engineering"),
+                 std::invalid_argument);
+    EXPECT_THROW(management.createDepartment(actor, " "), std::invalid_argument);
+    EXPECT_THROW(management.createCourse(actor, 0, "CS4433", "Software Engineering"),
+                 std::invalid_argument);
+}
+
+TEST_F(UserManagementTests, DeactivatedAccountCannotReadVisibleCourses)
+{
+    bootstrap.createInitialAdministrator("admin", "LongSecretPassword123!");
+    const auto admin = authentication.logIn("admin", "LongSecretPassword123!");
+    const auto dep = management.createDepartment(admin, "Computing");
+    const auto course = management.createCourse(admin, dep.id, "CS4433", "Software Engineering");
+    const auto student = management.createUser(admin, "student1", "StudentPassword123!", lms::Role::Student);
+    const auto loggedIn = authentication.logIn("student1", "StudentPassword123!");
+    management.enrolStudent(admin, student.id, course.id);
+    management.deactivateUser(admin, student.id);
+    EXPECT_THROW(management.listVisibleCourses(loggedIn), lms::AuthenticationError);
 }
