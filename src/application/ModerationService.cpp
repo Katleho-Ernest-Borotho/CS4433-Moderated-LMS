@@ -34,8 +34,9 @@ ModerationRecord findRecord(const std::vector<ModerationRecord>& records,std::in
 } // namespace
 
 ModerationService::ModerationService(const IAuthenticationService& auth,
-    IModerationRepository& repository,const ILatePenaltyPolicy& penalties)
-    : auth_(auth),repo_(repository),penalties_(penalties) {}
+    IModerationRepository& repository,const ILatePenaltyPolicy& penalties,
+    const ISubmissionContentStore& files)
+    : auth_(auth),repo_(repository),penalties_(penalties),files_(files) {}
 
 std::vector<ModerationRecord> ModerationService::listDepartmentResults(const Session& hod) const
 {
@@ -84,6 +85,16 @@ void ModerationService::release(const Session& hod,std::int64_t submissionId)
     if(now<=record.effectiveDeadlineUtc)
         throw std::invalid_argument("Results cannot be released before the effective deadline");
     repo_.releaseMark(hod.userId(),submissionId,record.latestVersionId,now);
+}
+
+std::string ModerationService::readLatestAttachment(
+    const Session& hod,std::int64_t submissionId) const
+{
+    auth_.requireRole(hod,Role::HeadOfDepartment);
+    const auto record=findRecord(repo_.listDepartmentResults(hod.userId()),submissionId);
+    if(record.attachmentRef.empty())
+        throw std::invalid_argument("There is no attachment on this version");
+    return files_.read(StoredRef{record.attachmentRef});
 }
 
 std::vector<ReleasedResult> ModerationService::getReleasedResults(const Session& student) const
