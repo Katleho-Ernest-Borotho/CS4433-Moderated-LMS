@@ -9,6 +9,7 @@
 #include <QGroupBox>
 #include <QHeaderView>
 #include <QLabel>
+#include <QLocale>
 #include <QLineEdit>
 #include <QMessageBox>
 #include <QPushButton>
@@ -23,6 +24,7 @@
 #include <exception>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 
 namespace lms {
 namespace {
@@ -42,6 +44,15 @@ QString asUtc(const QDateTime& date)
 {
     return date.toUTC().toString("yyyy-MM-ddTHH:mm:ss'Z'");
 }
+
+QString asReadableLocalTime(std::string_view utc)
+{
+    const QDateTime timestamp = QDateTime::fromString(
+        QString::fromUtf8(utc.data(), static_cast<qsizetype>(utc.size())), Qt::ISODate);
+    if (!timestamp.isValid()) return "Invalid date";
+    return QLocale(QLocale::English).toString(
+        timestamp.toLocalTime(), "dd MMM yyyy, HH:mm");
+}
 } // namespace
 
 AssignmentPanel::AssignmentPanel(IAcademicManagementService& academic,
@@ -55,11 +66,15 @@ AssignmentPanel::AssignmentPanel(IAcademicManagementService& academic,
     courses_=new QComboBox(this);
     coursesForm->addRow("Course:",courses_);
     layout->addLayout(coursesForm);
+    auto* timeNote = new QLabel(
+        "All times are displayed in your computer's local time.", this);
+    timeNote->setStyleSheet("color: palette(mid);");
+    layout->addWidget(timeNote);
 
     assignments_=new QTableWidget(this);
     assignments_->setColumnCount(4);
     assignments_->setHorizontalHeaderLabels(
-        {"Assignment","Original deadline (UTC)","My effective deadline (UTC)","Maximum mark"});
+        {"Assignment","Original due (local)","Your due (local)","Maximum mark"});
     assignments_->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
     assignments_->verticalHeader()->setVisible(false);
     assignments_->setSelectionBehavior(QAbstractItemView::SelectRows);
@@ -72,7 +87,7 @@ AssignmentPanel::AssignmentPanel(IAcademicManagementService& academic,
     assignmentTitle_->setPlaceholderText("Assignment title");
     assignmentDeadline_=new QDateTimeEdit(QDateTime::currentDateTime().addDays(7),creationGroup_);
     assignmentDeadline_->setCalendarPopup(true);
-    assignmentDeadline_->setDisplayFormat("yyyy-MM-dd HH:mm");
+    assignmentDeadline_->setDisplayFormat("dd MMM yyyy, HH:mm");
     maximumMark_=new QDoubleSpinBox(creationGroup_);
     maximumMark_->setRange(0.01,1000000.0);
     maximumMark_->setDecimals(2);
@@ -90,7 +105,7 @@ AssignmentPanel::AssignmentPanel(IAcademicManagementService& academic,
     enrolledStudents_=new QComboBox(extensionGroup_);
     extensionDeadline_=new QDateTimeEdit(QDateTime::currentDateTime().addDays(14),extensionGroup_);
     extensionDeadline_->setCalendarPopup(true);
-    extensionDeadline_->setDisplayFormat("yyyy-MM-dd HH:mm");
+    extensionDeadline_->setDisplayFormat("dd MMM yyyy, HH:mm");
     currentDeadline_=new QLabel("Choose an assignment and student.",extensionGroup_);
     currentDeadline_->setWordWrap(true);
     auto* grantButton=new QPushButton("Grant individual extension",extensionGroup_);
@@ -178,11 +193,11 @@ void AssignmentPanel::loadCourse()
                 const auto& a=records[static_cast<std::size_t>(i)];
                 QString effective="-";
                 if(!lecturer) {
-                    effective=QString::fromStdString(
+                    effective=asReadableLocalTime(
                         submissions_.effectiveDeadline(actor(),a.id,actor().userId()));
                 }
                 assignments_->setItem(i,0,new QTableWidgetItem(QString::fromStdString(a.title)));
-                assignments_->setItem(i,1,new QTableWidgetItem(QString::fromStdString(a.deadlineUtc)));
+                assignments_->setItem(i,1,new QTableWidgetItem(asReadableLocalTime(a.deadlineUtc)));
                 assignments_->setItem(i,2,new QTableWidgetItem(effective));
                 assignments_->setItem(i,3,new QTableWidgetItem(QString::number(a.maximumMark,'f',2)));
                 if(lecturer)
@@ -211,7 +226,7 @@ void AssignmentPanel::refreshEffectiveDeadline()
     try {
         const auto effective=submissions_.effectiveDeadline(actor(),
             selection(extensionAssignments_),selection(enrolledStudents_));
-        currentDeadline_->setText(QString::fromStdString(effective));
+        currentDeadline_->setText(asReadableLocalTime(effective));
     } catch(const std::exception& error) {
         currentDeadline_->setText(QString::fromUtf8(error.what()));
     }
