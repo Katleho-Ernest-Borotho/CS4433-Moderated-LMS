@@ -1,6 +1,7 @@
 #include "lms/ui/LoginWindow.h"
 #include "lms/ui/AcademicPanel.h"
 #include "lms/ui/AssignmentPanel.h"
+#include "lms/ui/MarkingPanel.h"
 
 #include <QAbstractItemView>
 #include <QComboBox>
@@ -52,8 +53,9 @@ QLabel* title(const QString& value, QWidget* parent)
 LoginWindow::LoginWindow(IAuthenticationService& authentication,
                          BootstrapService& bootstrap,
                          IAcademicManagementService& accounts,
-                         ISubmissionService& submissions)
-    : authentication_(authentication), bootstrap_(bootstrap), accounts_(accounts), submissions_(submissions)
+                         ISubmissionService& submissions,
+                         IMarkingService& marking)
+    : authentication_(authentication), bootstrap_(bootstrap), accounts_(accounts), submissions_(submissions), marking_(marking)
 {
     setWindowTitle("Moderated Learning Management System");
     setMinimumSize(700, 520);
@@ -214,6 +216,8 @@ QWidget* LoginWindow::createDashboardPage()
     assignmentsPanel_ = new AssignmentPanel(accounts_, submissions_, session_, learningTabs_);
     learningTabs_->addTab(myCoursesTable_, "My courses");
     learningTabs_->addTab(assignmentsPanel_, "Assignments and extensions");
+    markingPanel_ = new MarkingPanel(accounts_, marking_, session_, learningTabs_);
+    learningTabs_->addTab(markingPanel_, "Marking");
     layout->addWidget(learningTabs_);
 
     auto* information = new QLabel(
@@ -279,6 +283,7 @@ void LoginWindow::showDashboard()
     learningTabs_->setVisible(!administrator);
     learningTabs_->setTabVisible(1, session_->role()==Role::Lecturer ||
                                    session_->role()==Role::Student);
+    learningTabs_->setTabVisible(2, session_->role()==Role::Lecturer);
     learningTabs_->setCurrentIndex(0);
     pages_->setCurrentWidget(dashboardPage_);
     if (administrator) {
@@ -299,6 +304,8 @@ void LoginWindow::showDashboard()
             }
             if(session_->role()==Role::Lecturer || session_->role()==Role::Student)
                 assignmentsPanel_->refresh();
+            if(session_->role()==Role::Lecturer)
+                markingPanel_->refresh();
         } catch (const std::exception&) {
             QMessageBox::warning(this, "Courses", "Unable to load your assigned courses.");
             logOut();
