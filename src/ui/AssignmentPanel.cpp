@@ -16,6 +16,7 @@
 #include <QMessageBox>
 #include <QPushButton>
 #include <QSignalBlocker>
+#include <QScrollArea>
 #include <QTableWidget>
 #include <QTableWidgetItem>
 #include <QTextEdit>
@@ -64,7 +65,13 @@ AssignmentPanel::AssignmentPanel(IAcademicManagementService& academic,
                                  QWidget* parent)
     : QWidget(parent),academic_(academic),submissions_(submissions),session_(session)
 {
-    auto* layout=new QVBoxLayout(this);
+    auto* outer=new QVBoxLayout(this);
+    auto* scroll=new QScrollArea(this);
+    scroll->setWidgetResizable(true);
+    outer->addWidget(scroll);
+    auto* content=new QWidget(scroll);
+    scroll->setWidget(content);
+    auto* layout=new QVBoxLayout(content);
     auto* coursesForm=new QFormLayout;
     courses_=new QComboBox(this);
     coursesForm->addRow("Course:",courses_);
