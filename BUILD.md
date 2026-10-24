@@ -59,3 +59,63 @@ The assignment grid presents deadlines in the computer's local timezone, for exa
 ## Remaining core requirements
 
 Late penalty/marking (FR-13/FR-14), moderation and release (FR-15/FR-17), and complete mark-change auditing (FR-18) are not yet implemented. Full file-viewing, user-account editing, and some additional administrative functions also remain.
+
+
+## Paired implementation checkpoint: Late penalties + lecturer marking
+
+This checkpoint adds the **CommencedDayPenaltyPolicy** and a **Marking** tab for
+lecturers. It does not implement HoD approval or result release.
+
+### Marking walkthrough
+
+1. Sign in as the Lecturer assigned to the course and open **Marking**.
+2. Choose the assigned course and an assignment. The table lists students who
+   have submitted work and the newest version of each submission.
+3. Select a student to inspect the newest typed text. If the version contains an
+   attachment, use **Save latest attached file...** to save a review copy.
+4. Enter the earned mark (from zero to the assignment maximum) and written feedback,
+   then choose **Save provisional mark**.
+5. The screen shows the earned mark, calculated late penalty and provisional final
+   mark. These figures remain **hidden from students**.
+6. To revise an existing mark or re-mark a more recent student version, enter a
+   **revision reason**. Changed earned, penalty and final values are each recorded
+   as separate audit events in the same SQLite transaction.
+7. Log in as the Student. The Student still sees submissions and deadline details,
+   but **not** the unreleased mark or feedback.
+
+### Exact penalty boundaries
+
+* On time, or exactly at the effective deadline: zero penalty.
+* Late by (0, 24] hours: deduct 10% of the **maximum mark**.
+* Late by (24, 48] hours: deduct 20% of the maximum mark.
+* Late by (48, 72] hours: deduct 30% of the maximum mark.
+* More than 72 hours late: final mark is zero.
+
+For the first three late windows, the result is clamped to zero if the deduction
+exceeds the earned mark. Marks are rounded to two decimal places. An individual
+extension changes the effective deadline used in this computation.
+
+### Re-marking after resubmission
+
+If a Student submits a new version before their effective deadline, the earlier
+mark is stale: a Lecturer must assess the **latest** version again before further
+moderation. The service rejects marking a version that has been superseded.
+Revisions to existing numerical marks and their audit events are written in one
+database transaction. Existing version-history records are retained.
+
+### Verification
+
+Run the same Git Bash pull / MSYS2 UCRT64 CMake, build, CTest and launch commands
+shown above. The suite now contains **70 test cases** including penalty boundaries,
+valid and invalid marks, lecturer authorisation, file review, provisional status,
+audit log revisions and resubmission re-marking.
+
+This commit is committed to GitHub but has not yet been built on the development
+machine. Do **not** treat the test target as a confirmed test result until CTest
+reports success.
+
+### Not implemented yet
+
+HoD moderation, approval, mark adjustment by HoD, release of marks, and released
+results in the Student view are still pending. Do not use real students' marks
+until these and final backup/security checks are complete.
