@@ -17,6 +17,7 @@ add_library(lms_core
     src/domain/User.cpp
     src/persistence/SqliteDatabase.cpp
     src/persistence/SQLiteRecordRepository.cpp
+    src/persistence/SQLiteAcademicRepository.cpp
     src/security/SodiumPasswordHasher.cpp
     src/application/AuthenticationService.cpp
     src/application/BootstrapService.cpp
@@ -28,6 +29,7 @@ target_link_libraries(lms_core PUBLIC SQLite::SQLite3 PkgConfig::SODIUM)
 qt_add_executable(ModeratedLMS
     src/main.cpp
     src/ui/LoginWindow.cpp
+    src/ui/AcademicPanel.cpp
 )
 target_link_libraries(ModeratedLMS PRIVATE Qt6::Widgets lms_core)
 

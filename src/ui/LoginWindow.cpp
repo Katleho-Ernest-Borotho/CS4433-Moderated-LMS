@@ -1,4 +1,5 @@
 #include "lms/ui/LoginWindow.h"
+#include "lms/ui/AcademicPanel.h"
 
 #include <QAbstractItemView>
 #include <QComboBox>
@@ -14,6 +15,7 @@
 #include <QString>
 #include <QTableWidget>
 #include <QTableWidgetItem>
+#include <QTabWidget>
 #include <QVBoxLayout>
 #include <QWidget>
 
@@ -194,11 +196,22 @@ QWidget* LoginWindow::createDashboardPage()
     dashboardGreeting_->setAlignment(Qt::AlignCenter);
     layout->addWidget(dashboardGreeting_);
 
+    adminTabs_ = new QTabWidget(page);
     adminPanel_ = createAdminPanel();
-    layout->addWidget(adminPanel_);
+    academicPanel_ = new AcademicPanel(accounts_, session_, adminTabs_);
+    adminTabs_->addTab(adminPanel_, "User management");
+    adminTabs_->addTab(academicPanel_, "Academic management");
+    layout->addWidget(adminTabs_);
+
+    myCoursesTable_ = new QTableWidget(page);
+    myCoursesTable_->setColumnCount(3);
+    myCoursesTable_->setHorizontalHeaderLabels({"Course code", "Course title", "Department ID"});
+    myCoursesTable_->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+    myCoursesTable_->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    layout->addWidget(myCoursesTable_);
 
     auto* information = new QLabel(
-        "Course, assignment, submission, marking and moderation screens are not implemented yet.",
+        "Academic course records are available. Assignments, submissions, marking and moderation are still under development.",
         page);
     information->setWordWrap(true);
     information->setAlignment(Qt::AlignCenter);
@@ -256,9 +269,30 @@ void LoginWindow::showDashboard()
         + " (" + roleText(session_->role()) + ")");
 
     const bool administrator = session_->role() == Role::Administrator;
-    adminPanel_->setVisible(administrator);
+    adminTabs_->setVisible(administrator);
+    myCoursesTable_->setVisible(!administrator);
     pages_->setCurrentWidget(dashboardPage_);
-    if (administrator) refreshAccounts();
+    if (administrator) {
+        refreshAccounts();
+        academicPanel_->refresh();
+    } else {
+        try {
+            const auto courses = accounts_.listVisibleCourses(*session_);
+            myCoursesTable_->setRowCount(static_cast<int>(courses.size()));
+            for (int i = 0; i < static_cast<int>(courses.size()); ++i) {
+                const auto& course = courses[static_cast<std::size_t>(i)];
+                myCoursesTable_->setItem(i, 0,
+                    new QTableWidgetItem(QString::fromStdString(course.code)));
+                myCoursesTable_->setItem(i, 1,
+                    new QTableWidgetItem(QString::fromStdString(course.title)));
+                myCoursesTable_->setItem(i, 2,
+                    new QTableWidgetItem(QString::number(course.departmentId)));
+            }
+        } catch (const std::exception&) {
+            QMessageBox::warning(this, "Courses", "Unable to load your assigned courses.");
+            logOut();
+        }
+    }
 }
 
 void LoginWindow::createAccount()
@@ -279,6 +313,7 @@ void LoginWindow::createAccount()
         newPassword_->clear();
         newPasswordConfirmation_->clear();
         refreshAccounts();
+        academicPanel_->refresh();
         QMessageBox::information(this, "User created",
             "Created account for " + QString::fromStdString(result.username)
             + " (" + roleText(result.role) + ").");
@@ -354,7 +389,8 @@ void LoginWindow::logOut()
     newPasswordConfirmation_->clear();
     loginPassword_->clear();
     accountTable_->setRowCount(0);
-    adminPanel_->hide();
+    myCoursesTable_->setRowCount(0);
+    adminTabs_->hide();
     pages_->setCurrentWidget(loginPage_);
     loginUsername_->setFocus();
 }

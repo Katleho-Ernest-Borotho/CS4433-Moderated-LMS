@@ -36,7 +36,7 @@ int main(int argc, char* argv[])
         lms::SodiumPasswordHasher passwords;
         lms::AuthenticationService authentication(users, passwords);
         lms::BootstrapService bootstrap(users, passwords);
-        lms::AcademicManagementService academic(authentication, users, passwords);
+        lms::AcademicManagementService academic(authentication, users, users, passwords);
 
         lms::LoginWindow window(authentication, bootstrap, academic);
         window.show();

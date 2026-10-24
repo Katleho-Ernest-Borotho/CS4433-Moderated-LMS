@@ -12,9 +12,11 @@ class QLineEdit;
 class QComboBox;
 class QStackedWidget;
 class QTableWidget;
+class QTabWidget;
 class QWidget;
 
 namespace lms {
+class AcademicPanel;
 class LoginWindow final : public QMainWindow {
 public:
     LoginWindow(IAuthenticationService& authentication, BootstrapService& bootstrap,
@@ -41,6 +43,9 @@ private:
     QWidget* loginPage_ = nullptr;
     QWidget* dashboardPage_ = nullptr;
     QWidget* adminPanel_ = nullptr;
+    AcademicPanel* academicPanel_ = nullptr;
+    QTabWidget* adminTabs_ = nullptr;
+    QTableWidget* myCoursesTable_ = nullptr;
     QLineEdit* setupUsername_ = nullptr;
     QLineEdit* setupPassword_ = nullptr;
     QLineEdit* setupConfirmation_ = nullptr;

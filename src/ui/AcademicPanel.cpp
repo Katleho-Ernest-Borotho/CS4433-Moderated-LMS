@@ -16,6 +16,8 @@
 #include <QVBoxLayout>
 #include <QVariant>
 
+#include <algorithm>
+#include <cstdint>
 #include <exception>
 #include <stdexcept>
 
