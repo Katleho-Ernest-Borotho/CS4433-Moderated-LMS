@@ -3,6 +3,7 @@
 #include "lms/application/BootstrapService.h"
 #include "lms/application/SubmissionManagementService.h"
 #include "lms/application/MarkingService.h"
+#include "lms/application/ModerationService.h"
 #include "lms/domain/LatePenaltyPolicy.h"
 #include "lms/persistence/SQLiteRecordRepository.h"
 #include "lms/persistence/LocalSubmissionContentStore.h"
@@ -46,7 +47,8 @@ int main(int argc, char* argv[])
         lms::SubmissionManagementService submissions(authentication, users, users, files);
         lms::CommencedDayPenaltyPolicy penaltyPolicy;
         lms::MarkingService marking(authentication, users, users, penaltyPolicy, files);
-        lms::LoginWindow window(authentication, bootstrap, academic, submissions, marking);
+        lms::ModerationService moderation(authentication, users, penaltyPolicy, files);
+        lms::LoginWindow window(authentication, bootstrap, academic, submissions, marking, moderation);
         window.show();
         return application.exec();
     } catch (const std::exception& error) {
