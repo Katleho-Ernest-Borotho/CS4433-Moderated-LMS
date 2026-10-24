@@ -32,6 +32,7 @@ qt_add_executable(ModeratedLMS
     src/main.cpp
     src/ui/LoginWindow.cpp
     src/ui/AcademicPanel.cpp
+    src/ui/AssignmentPanel.cpp
 )
 target_link_libraries(ModeratedLMS PRIVATE Qt6::Widgets lms_core)
 
