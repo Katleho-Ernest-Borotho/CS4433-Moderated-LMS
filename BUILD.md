@@ -119,3 +119,86 @@ reports success.
 HoD moderation, approval, mark adjustment by HoD, release of marks, and released
 results in the Student view are still pending. Do not use real students' marks
 until these and final backup/security checks are complete.
+
+
+## Paired checkpoint: HoD moderation + Student result release
+
+This version adds the HoD moderation/approval workflow (FR-15/FR-18) and
+controlled, individual result release (FR-16/FR-17), following the Week 3 design.
+
+### Update and build
+
+Close the LMS program. In **Git Bash**:
+
+```bash
+cd /c/Users/borot/OneDrive/Desktop/CS4433-Moderated-LMS
+git switch feature/phase4-implementation
+git pull --ff-only origin feature/phase4-implementation
+```
+
+In **MSYS2 UCRT64**:
+
+```bash
+cd /c/Users/borot/OneDrive/Desktop/CS4433-Moderated-LMS
+cmake -S . -B /c/dev/cs4433-lms-build -G Ninja -DCMAKE_BUILD_TYPE=Debug
+cmake --build /c/dev/cs4433-lms-build
+ctest --test-dir /c/dev/cs4433-lms-build --output-on-failure
+/c/dev/cs4433-lms-build/ModeratedLMS.exe
+```
+
+The source tree contains **86 tests**, including 16 HoD moderation/release
+cases; the new code must still be built and tested on the development laptop.
+
+### End-to-end demonstration
+
+1. Sign in as Administrator. If no HoD exists, create a temporary
+   **Head of Department** account through User Management. In Academic Management,
+   assign the account to the department containing CS4433. Confirm that a Lecturer
+   is assigned to CS4433 and a Student is enrolled.
+2. For a prompt demonstration, sign in as the Lecturer, open Assignments and
+   Extensions and create a **new demonstration assignment whose deadline was one
+   or two hours ago**. Do not change the deadline on the existing extended Lab 1.
+3. Sign in as the Student, submit text or a file to this new assignment. The first
+   submission is accepted late; a resubmission after the effective deadline is
+   refused. The application keeps the older submission-version records.
+4. Sign in as the Lecturer, open **Marking**, choose the new assignment and Student,
+   enter an earned mark and written feedback, then save the provisional result.
+5. Sign in as the HoD, open **Results and moderation**, select the submitted result
+   and review the latest text/attachment, lecturer feedback, automatic late
+   penalty and effective deadline.
+6. Select **Approve moderation**, optionally checking **Adjust lecturer's earned
+   mark** and entering a revision reason if making a change. An adjusted earned
+   mark automatically recalculates the late-penalty outcome and generates
+   per-field audit records where numerical values changed. Approval by itself
+   **does not** expose the result to the Student.
+7. Select the approved row and then **Release approved result**. Release is a
+   separate, confirmed action.
+8. Sign in as the Student, open **Results and moderation**, and verify that the
+   released result now displays the mark, late-penalty deduction and feedback.
+   A different Student sees only their own released results.
+
+### Safeguards
+
+- Only an active HoD assigned to the course's department may review/approve/release.
+- Both approval and release require the student's **effective deadline to have
+  passed**, taking individual extensions into account.
+- Approval/release rejects a stale mark if the Student's latest submission version
+  has not been assessed.
+- Mark changes and their audit events run inside one SQLite transaction; an
+  audit-write error rolls back the mark and approval.
+- Approval and release are separate transactions; release rejects unapproved
+  results and cannot be repeated.
+- Only the authenticated Student's own **approved and released** marks are visible.
+  Provisional and approved-but-unreleased marks remain hidden.
+- Lecturer marks already approved for moderation cannot be edited in the existing
+  marking workflow.
+
+**Important:** The previously created Lab 1 has an extended deadline in the
+future. Attempting to moderate or release it now should display the deadline
+guard error. Use a new recently expired test assignment, as above.
+
+The same twelve-table database schema is reused. Existing users, courses,
+submissions and marks must not be deleted to install this version.
+Backup/recovery, full acceptance testing, production security validation and
+remaining account-management enhancements must be addressed before using live
+student marks.
