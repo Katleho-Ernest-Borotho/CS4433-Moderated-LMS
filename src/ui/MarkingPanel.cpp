@@ -18,6 +18,7 @@
 #include <QTableWidget>
 #include <QTableWidgetItem>
 #include <QVBoxLayout>
+#include <QVariant>
 
 #include <cstddef>
 #include <exception>
@@ -33,7 +34,7 @@ std::int64_t choice(const QComboBox* box)
 }
 void addChoice(QComboBox* box, const QString& text,std::int64_t id)
 {
-    box->addItem(text,static_cast<qlonglong>(id));
+    box->addItem(text,QVariant::fromValue(static_cast<qlonglong>(id)));
 }
 }
 
@@ -205,7 +206,7 @@ void MarkingPanel::selectSubmission()
     if(!session_||index<0||index>=static_cast<int>(rows_.size()))return;
     try {
         const auto& sub=rows_[static_cast<std::size_t>(index)];
-        submittedText_->setPlainText(sub.text.empty()?"(File-only submission)":
+        submittedText_->setPlainText(sub.text.empty()?QString("(File-only submission)"):
                                      QString::fromStdString(sub.text));
         download_->setEnabled(!sub.attachmentRef.empty());
         const auto existing=marking_.currentResult(actor(),sub.submissionId);
