@@ -4,6 +4,9 @@
 
 #include <algorithm>
 #include <array>
+#include <cstdint>
+#include <iterator>
+#include <utility>
 #include <cctype>
 #include <filesystem>
 #include <fstream>
@@ -60,7 +63,7 @@ LocalSubmissionContentStore::LocalSubmissionContentStore(std::string rootDirecto
 StagedRef LocalSubmissionContentStore::stage(std::string_view sourcePath)
 {
     if(sourcePath.empty())throw std::invalid_argument("No attachment selected");
-    const fs::path source(std::string(sourcePath));
+    const fs::path source{std::string(sourcePath)};
     if(!fs::is_regular_file(source))throw std::invalid_argument("Attachment does not exist");
     const auto extension=extensionFor(source);
     const auto size=fs::file_size(source);
