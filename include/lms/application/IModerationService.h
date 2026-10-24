@@ -13,6 +13,8 @@ public:
     virtual void moderate(const Session& hod,std::int64_t submissionId,
         std::optional<double> adjustedEarnedMark,std::string_view reason)=0;
     virtual void release(const Session& hod,std::int64_t submissionId)=0;
+    virtual std::string readLatestAttachment(const Session& hod,
+        std::int64_t submissionId) const=0;
     virtual std::vector<ReleasedResult> getReleasedResults(const Session& student) const=0;
 };
 } // namespace lms
