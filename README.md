@@ -44,7 +44,6 @@ CS4433-Moderated-LMS/
 ├── scripts/              # Optional build/deployment utilities
 ├── .gitignore
 ├── GIT_WORKFLOW.md
-└── README.md
 ```
 
 ## Getting started
