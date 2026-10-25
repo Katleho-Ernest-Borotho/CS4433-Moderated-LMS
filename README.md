@@ -46,10 +46,3 @@ CS4433-Moderated-LMS/
 ├── GIT_WORKFLOW.md
 ```
 
-## Getting started
-
-See [GIT_WORKFLOW.md](GIT_WORKFLOW.md) for one-time repository setup and everyday commit/push instructions. This initial repository is a **documentation and version-control baseline**; no LMS functionality has been implemented yet.
-
-## Privacy
-
-The archived submitted PDFs contain student details. Keep the repository **private** unless you have deliberately reviewed the files and decided to publish them. Never commit real student assessment records, passwords, local database files, API tokens or other secrets.
