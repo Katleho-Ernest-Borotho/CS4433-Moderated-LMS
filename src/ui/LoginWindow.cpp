@@ -6,6 +6,9 @@
 
 #include <QAbstractItemView>
 #include <QComboBox>
+#include <QDialog>
+#include <QDialogButtonBox>
+#include <QInputDialog>
 #include <QFont>
 #include <QFormLayout>
 #include <QHeaderView>
@@ -180,11 +183,20 @@ QWidget* LoginWindow::createAdminPanel()
 
     auto* actions = new QHBoxLayout;
     auto* refresh = new QPushButton("Refresh users", panel);
-    auto* deactivate = new QPushButton("Deactivate selected user", panel);
+    auto* rename = new QPushButton("Rename selected", panel);
+    auto* reactivate = new QPushButton("Reactivate selected", panel);
+    auto* deactivate = new QPushButton("Deactivate selected", panel);
+    auto* resetPassword = new QPushButton("Reset password", panel);
     connect(refresh, &QPushButton::clicked, this, [this] { refreshAccounts(); });
+    connect(rename, &QPushButton::clicked, this, [this] { renameAccount(); });
+    connect(reactivate, &QPushButton::clicked, this, [this] { reactivateAccount(); });
     connect(deactivate, &QPushButton::clicked, this, [this] { deactivateAccount(); });
+    connect(resetPassword, &QPushButton::clicked, this, [this] { resetAccountPassword(); });
     actions->addWidget(refresh);
+    actions->addWidget(rename);
+    actions->addWidget(reactivate);
     actions->addWidget(deactivate);
+    actions->addWidget(resetPassword);
     layout->addLayout(actions);
     return panel;
 }
@@ -404,6 +416,113 @@ void LoginWindow::deactivateAccount()
         logOut();
     } catch (const std::exception& error) {
         QMessageBox::warning(this, "Cannot deactivate user", error.what());
+    }
+}
+
+void LoginWindow::renameAccount()
+{
+    if (!session_) return;
+    const int row=accountTable_->currentRow();
+    if(row<0 || !accountTable_->item(row,0) || !accountTable_->item(row,1)) {
+        QMessageBox::information(this,"Select account","Select an account in the table first.");
+        return;
+    }
+    const auto id=accountTable_->item(row,0)->text().toLongLong();
+    const auto username=accountTable_->item(row,1)->text();
+    bool accepted=false;
+    const auto replacement=QInputDialog::getText(this,"Rename account",
+        "New username:",QLineEdit::Normal,username,&accepted);
+    if(!accepted)return;
+    try {
+        accounts_.renameUser(*session_,id,replacement.trimmed().toStdString());
+        refreshAccounts();
+        academicPanel_->refresh();
+        QMessageBox::information(this,"Account renamed",
+            "The username was changed. The user must sign in again with the new username.");
+    } catch(const AuthenticationError&) {
+        QMessageBox::warning(this,"Access denied","Administrator session is invalid.");
+        logOut();
+    } catch(const std::exception& error) {
+        QMessageBox::warning(this,"Rename account",error.what());
+    }
+}
+
+void LoginWindow::reactivateAccount()
+{
+    if(!session_)return;
+    const int row=accountTable_->currentRow();
+    if(row<0 || !accountTable_->item(row,0) || !accountTable_->item(row,1)) {
+        QMessageBox::information(this,"Select account","Select an account in the table first.");
+        return;
+    }
+    const auto id=accountTable_->item(row,0)->text().toLongLong();
+    const auto username=accountTable_->item(row,1)->text();
+    if(QMessageBox::question(this,"Reactivate account",
+        "Reactivate "+username+"? The account will be able to log in again.")
+        !=QMessageBox::Yes)return;
+    try {
+        accounts_.reactivateUser(*session_,id);
+        refreshAccounts();
+        academicPanel_->refresh();
+        QMessageBox::information(this,"Account reactivated",username+" is now active.");
+    } catch(const AuthenticationError&) {
+        QMessageBox::warning(this,"Access denied","Administrator session is invalid.");
+        logOut();
+    } catch(const std::exception& error) {
+        QMessageBox::warning(this,"Reactivate account",error.what());
+    }
+}
+
+void LoginWindow::resetAccountPassword()
+{
+    if(!session_)return;
+    const int row=accountTable_->currentRow();
+    if(row<0 || !accountTable_->item(row,0) || !accountTable_->item(row,1)) {
+        QMessageBox::information(this,"Select account","Select an account in the table first.");
+        return;
+    }
+    const auto id=accountTable_->item(row,0)->text().toLongLong();
+    const auto username=accountTable_->item(row,1)->text();
+    QDialog dialog(this);
+    dialog.setWindowTitle("Reset password for "+username);
+    auto* layout=new QVBoxLayout(&dialog);
+    auto* description=new QLabel(
+        "Enter a new temporary password (at least 12 characters). "
+        "The previous password will stop working.",&dialog);
+    description->setWordWrap(true);
+    layout->addWidget(description);
+    auto* form=new QFormLayout;
+    auto* password=new QLineEdit(&dialog);
+    password->setEchoMode(QLineEdit::Password);
+    auto* confirm=new QLineEdit(&dialog);
+    confirm->setEchoMode(QLineEdit::Password);
+    form->addRow("New password:",password);
+    form->addRow("Confirm:",confirm);
+    layout->addLayout(form);
+    auto* buttons=new QDialogButtonBox(
+        QDialogButtonBox::Ok|QDialogButtonBox::Cancel,&dialog);
+    layout->addWidget(buttons);
+    connect(buttons,&QDialogButtonBox::accepted,&dialog,&QDialog::accept);
+    connect(buttons,&QDialogButtonBox::rejected,&dialog,&QDialog::reject);
+    if(dialog.exec()!=QDialog::Accepted)return;
+    const QString input=password->text();
+    const bool match=input==confirm->text();
+    password->clear();
+    confirm->clear();
+    if(!match) {
+        QMessageBox::warning(this,"Reset password","The two passwords do not match.");
+        return;
+    }
+    try {
+        accounts_.resetUserPassword(*session_,id,input.toStdString());
+        QMessageBox::information(this,"Password reset",
+            "The password has been updated for "+username+
+            ". Previously signed-in sessions are no longer valid.");
+    } catch(const AuthenticationError&) {
+        QMessageBox::warning(this,"Access denied","Administrator session is invalid.");
+        logOut();
+    } catch(const std::exception& error) {
+        QMessageBox::warning(this,"Reset password",error.what());
     }
 }
 

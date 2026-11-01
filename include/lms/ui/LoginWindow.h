@@ -40,6 +40,9 @@ private:
     void createAccount();
     void refreshAccounts();
     void deactivateAccount();
+    void renameAccount();
+    void reactivateAccount();
+    void resetAccountPassword();
     void logOut();
 
     IAuthenticationService& authentication_;
