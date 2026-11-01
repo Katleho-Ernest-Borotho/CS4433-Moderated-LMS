@@ -215,4 +215,71 @@ void SQLiteRecordRepository::deactivateUser(std::int64_t id)
     }
 }
 
+void SQLiteRecordRepository::renameUser(std::int64_t userId,std::string_view name)
+{
+    sqlite3* db=database_.connection();
+    execute(db,"BEGIN IMMEDIATE;");
+    try {
+        auto statement=prepare(db,"UPDATE users SET username=?1 WHERE user_id=?2;");
+        bindText(statement.get(),1,name);
+        if(sqlite3_bind_int64(statement.get(),2,userId)!=SQLITE_OK)
+            throw std::runtime_error("Cannot bind user ID");
+        if(sqlite3_step(statement.get())!=SQLITE_DONE) {
+            if(sqlite3_extended_errcode(db)==SQLITE_CONSTRAINT_UNIQUE)
+                throw std::invalid_argument("Username already exists");
+            throw std::runtime_error(sqlite3_errmsg(db));
+        }
+        if(sqlite3_changes(db)!=1)
+            throw std::invalid_argument("User not found");
+        statement.reset();
+        execute(db,"COMMIT;");
+    } catch (...) {
+        sqlite3_exec(db,"ROLLBACK;",nullptr,nullptr,nullptr);
+        throw;
+    }
+}
+
+void SQLiteRecordRepository::reactivateUser(std::int64_t userId)
+{
+    sqlite3* db=database_.connection();
+    execute(db,"BEGIN IMMEDIATE;");
+    try {
+        auto statement=prepare(db,"UPDATE users SET active=1 WHERE user_id=?1 AND active=0;");
+        if(sqlite3_bind_int64(statement.get(),1,userId)!=SQLITE_OK)
+            throw std::runtime_error("Cannot bind user ID");
+        if(sqlite3_step(statement.get())!=SQLITE_DONE)
+            throw std::runtime_error(sqlite3_errmsg(db));
+        if(sqlite3_changes(db)!=1)
+            throw std::invalid_argument("User is missing or already active");
+        statement.reset();
+        execute(db,"COMMIT;");
+    } catch (...) {
+        sqlite3_exec(db,"ROLLBACK;",nullptr,nullptr,nullptr);
+        throw;
+    }
+}
+
+void SQLiteRecordRepository::resetPasswordHash(
+    std::int64_t userId,std::string_view newPasswordHash)
+{
+    sqlite3* db=database_.connection();
+    execute(db,"BEGIN IMMEDIATE;");
+    try {
+        auto statement=prepare(db,
+            "UPDATE users SET password_hash=?1 WHERE user_id=?2;");
+        bindText(statement.get(),1,newPasswordHash);
+        if(sqlite3_bind_int64(statement.get(),2,userId)!=SQLITE_OK)
+            throw std::runtime_error("Cannot bind user ID");
+        if(sqlite3_step(statement.get())!=SQLITE_DONE)
+            throw std::runtime_error(sqlite3_errmsg(db));
+        if(sqlite3_changes(db)!=1)
+            throw std::invalid_argument("User not found");
+        statement.reset();
+        execute(db,"COMMIT;");
+    } catch (...) {
+        sqlite3_exec(db,"ROLLBACK;",nullptr,nullptr,nullptr);
+        throw;
+    }
+}
+
 } // namespace lms
