@@ -67,6 +67,35 @@ void AcademicManagementService::deactivateUser(const Session& actor, std::int64_
     users_.deactivateUser(userId);
 }
 
+void AcademicManagementService::renameUser(const Session& actor, std::int64_t userId,
+                                            std::string_view newUsername)
+{
+    authentication_.requireRole(actor,Role::Administrator);
+    if(actor.userId()==userId)
+        throw std::invalid_argument("Cannot rename the currently signed-in administrator");
+    validateUsername(newUsername);
+    users_.renameUser(userId,newUsername);
+}
+
+void AcademicManagementService::reactivateUser(const Session& actor,std::int64_t userId)
+{
+    authentication_.requireRole(actor,Role::Administrator);
+    users_.reactivateUser(userId);
+}
+
+void AcademicManagementService::resetUserPassword(
+    const Session& actor,std::int64_t userId,std::string_view newPassword)
+{
+    authentication_.requireRole(actor,Role::Administrator);
+    validatePassword(newPassword);
+    // Avoid resetting the active administrator through a shared public workstation.
+    // For a test account, an administrator may reset any other user's password.
+    if(actor.userId()==userId)
+        throw std::invalid_argument("Cannot reset your own password from User management");
+    const auto hash=passwords_.hash(newPassword);
+    users_.resetPasswordHash(userId,hash);
+}
+
 Department AcademicManagementService::createDepartment(const Session& actor, std::string_view name)
 {
     authentication_.requireRole(actor, Role::Administrator);

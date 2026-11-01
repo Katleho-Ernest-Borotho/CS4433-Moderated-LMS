@@ -15,6 +15,12 @@ public:
                                    std::string_view initialPassword, Role role) = 0;
     virtual std::vector<UserAccount> listUsers(const Session& actor) const = 0;
     virtual void deactivateUser(const Session& actor, std::int64_t userId) = 0;
+    virtual void renameUser(const Session& actor, std::int64_t userId,
+                            std::string_view newUsername) = 0;
+    virtual void reactivateUser(const Session& actor, std::int64_t userId) = 0;
+    virtual void resetUserPassword(const Session& actor, std::int64_t userId,
+                                   std::string_view newPassword) = 0;
+
 
     virtual Department createDepartment(const Session& actor, std::string_view name) = 0;
     virtual void updateDepartment(const Session& actor, const Department& department) = 0;

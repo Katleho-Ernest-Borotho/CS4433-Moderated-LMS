@@ -17,6 +17,9 @@ public:
     std::int64_t saveUser(std::string_view username, std::string_view passwordHash, Role role) override;
     std::vector<UserAccount> listUsers() const override;
     void deactivateUser(std::int64_t id) override;
+    void renameUser(std::int64_t id, std::string_view newUsername) override;
+    void reactivateUser(std::int64_t id) override;
+    void resetPasswordHash(std::int64_t id, std::string_view newPasswordHash) override;
 
     Department saveDepartment(std::string_view name) override;
     void updateDepartment(const Department& department) override;

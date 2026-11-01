@@ -22,11 +22,14 @@ public:
     const std::string& username() const noexcept { return username_; }
 private:
     friend class AuthenticationService;
-    Session(std::int64_t userId, Role role, std::string username)
-        : userId_(userId), role_(role), username_(std::move(username)) {}
+    Session(std::int64_t userId, Role role, std::string username,
+            std::string passwordHash)
+        : userId_(userId), role_(role), username_(std::move(username)),
+          passwordHash_(std::move(passwordHash)) {}
     std::int64_t userId_;
     Role role_;
     std::string username_;
+    std::string passwordHash_;
 };
 
 class IAuthenticationService {

@@ -15,7 +15,7 @@ Session AuthenticationService::logIn(std::string_view username, std::string_view
     if (!user || !user->active() || !passwords_.verify(password, user->passwordHash())) {
         throw AuthenticationError("Invalid username or password");
     }
-    return Session(user->id(), user->role(), user->username());
+    return Session(user->id(), user->role(), user->username(), user->passwordHash());
 }
 
 void AuthenticationService::requireRole(const Session& session, Role expected) const
@@ -23,7 +23,8 @@ void AuthenticationService::requireRole(const Session& session, Role expected) c
     // Revalidate the account so a deactivated user cannot keep using an old session.
     const auto user = users_.findByUsername(session.username());
     if (!user || !user->active() || user->id() != session.userId()
-        || user->role() != session.role() || user->role() != expected) {
+        || user->role() != session.role() || user->role() != expected
+        || user->passwordHash() != session.passwordHash_) {
         throw AuthenticationError("Access denied");
     }
 }

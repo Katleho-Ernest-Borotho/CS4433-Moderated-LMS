@@ -16,6 +16,11 @@ public:
                            std::string_view initialPassword, Role role) override;
     std::vector<UserAccount> listUsers(const Session& actor) const override;
     void deactivateUser(const Session& actor, std::int64_t userId) override;
+    void renameUser(const Session& actor, std::int64_t userId,
+                    std::string_view newUsername) override;
+    void reactivateUser(const Session& actor, std::int64_t userId) override;
+    void resetUserPassword(const Session& actor, std::int64_t userId,
+                           std::string_view newPassword) override;
     Department createDepartment(const Session& actor, std::string_view name) override;
     void updateDepartment(const Session& actor, const Department& department) override;
     std::vector<Department> listDepartments(const Session& actor) const override;

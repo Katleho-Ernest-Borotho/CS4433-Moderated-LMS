@@ -17,5 +17,9 @@ public:
     virtual std::int64_t saveUser(std::string_view username, std::string_view passwordHash, Role role) = 0;
     virtual std::vector<UserAccount> listUsers() const = 0;
     virtual void deactivateUser(std::int64_t id) = 0;
+    virtual void renameUser(std::int64_t id, std::string_view newUsername) = 0;
+    virtual void reactivateUser(std::int64_t id) = 0;
+    virtual void resetPasswordHash(std::int64_t id, std::string_view newPasswordHash) = 0;
+
 };
 } // namespace lms
