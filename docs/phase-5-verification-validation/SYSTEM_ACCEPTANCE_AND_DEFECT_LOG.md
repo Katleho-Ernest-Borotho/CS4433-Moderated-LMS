@@ -35,8 +35,8 @@ Build type: Debug / Release  Test database: synthetic / demonstration data only
 | UC | User | Main path | Exception path to demonstrate | Evidence |
 |---|---|---|---|---|
 | UC-01 Submit assignment | Student | Enrolled course → create first submission → review version | Missing file/empty content, late first attempt, late replacement blocked | |
-| UC-02 Mark and moderate submissions | Lecturer, HoD | Lecturer mark + feedback → HoD checks/adjusts after deadline | Unassigned Lecturer, wrong department, stale version, audit failure | |
-| UC-03 Release marks | HoD, Student | HoD approves → HoD releases → Student sees result | Release unapproved result, early release, access to someone else's marks | |
+| UC-02 Mark Submission | Lecturer | Assigned course → review submission → mark + feedback → provisional result | Unassigned Lecturer, invalid mark, missing submission, audit failure | |
+| UC-03 Moderate and Release Marks | HoD, Student | HoD checks/adjusts + approves → explicitly releases → Student sees result | Wrong department, release unapproved result, early release, audit failure | |
 
 ## C. Required measurable NFR record
 
