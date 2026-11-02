@@ -38,5 +38,9 @@ public:
                                std::int64_t lecturerId, std::string_view newDeadlineUtc) = 0;
     virtual std::string findEffectiveDeadline(std::int64_t assignmentId,
                                               std::int64_t studentId) const = 0;
+    virtual void saveClassExtension(std::int64_t assignmentId, std::int64_t lecturerId,
+                                    std::string_view deadlineUtc,
+                                    std::string_view changedAtUtc) = 0;
+    virtual std::string findClassExtensionDeadline(std::int64_t assignmentId) const = 0;
 };
 } // namespace lms
