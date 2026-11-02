@@ -80,9 +80,14 @@ fs::path BackupManager::restore(const fs::path& backup,const fs::path& data)
         fs::rename(stage/"attachments",data/"attachments");
         newAttachmentsMoved=true;
         // Roll forward only after both new components reached their destinations.
-        fs::remove(previousDb);
-        fs::remove_all(previousAttachments);
-        fs::remove_all(stage);
+        // Finalisation is complete. Cleanup errors must never roll back an
+        // already-completed restore after the old file has been removed.
+        std::error_code cleanup;
+        fs::remove(previousDb,cleanup);
+        cleanup.clear();
+        fs::remove_all(previousAttachments,cleanup);
+        cleanup.clear();
+        fs::remove_all(stage,cleanup);
         return safety;
     } catch(...) {
         std::error_code ec;
