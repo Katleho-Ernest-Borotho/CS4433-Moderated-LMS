@@ -57,7 +57,7 @@ v1.1 uses **13 application tables**.
 | Windows UCRT64 CI at implementation checkpoint | **PASS** |
 | Developer's manual CR1 GUI confirmation | **REPORTED PASS** |
 | Upgrading stored v1.0 data without account loss | **Automated test PASS** |
-| Independent v1.1 Release package generated | **PENDING** |
+| Independent v1.1 Release package generated | **PASS — development PC packaged successfully; independent launch pending** |
 | v1.1 tested on second Windows laptop | **PENDING** |
 | Supervisor sign-off/release tag | **PENDING** |
 
@@ -75,7 +75,7 @@ evidence is not automatically transferable to the new v1.1 binary.
 
 ## Gate for final v1.1 release
 
-Run the new packaging script, independently launch on the second laptop,
+Review the generated v1.1 package and BUILD_PROVENANCE.txt, independently launch on the second laptop,
 verify migration and class/individual deadline behaviour using test data,
 confirm backup/restore, record outcomes and packaging SHA, then seek
 supervisor acceptance. Until then call this a **release candidate**.
