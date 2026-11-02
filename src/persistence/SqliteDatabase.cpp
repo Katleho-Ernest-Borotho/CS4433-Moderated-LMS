@@ -75,10 +75,8 @@ void SqliteDatabase::initializeSchemaFromFile(const std::string& schemaFile)
     if (knownTables < 0) {
         throw std::runtime_error("Cannot inspect existing database");
     }
-    if (knownTables == 12) {
-        return;
-    }
-    if (knownTables != 0) {
+    // v1.1 CR1 adds one table transactionally without altering the original 12.
+    if (knownTables != 0 && knownTables != 12) {
         throw std::runtime_error("Database schema is incomplete; manual inspection is required");
     }
 
@@ -95,7 +93,15 @@ void SqliteDatabase::initializeSchemaFromFile(const std::string& schemaFile)
 
     try {
         execute("BEGIN IMMEDIATE;");
-        execute(sql.c_str());
+        if (knownTables == 0) execute(sql.c_str());
+        execute(R"CR1(CREATE TABLE IF NOT EXISTS class_deadline_extensions (
+ class_extension_id INTEGER PRIMARY KEY,
+ assignment_id INTEGER NOT NULL UNIQUE REFERENCES assignments(assignment_id) ON DELETE RESTRICT,
+ lecturer_id INTEGER NOT NULL REFERENCES users(user_id) ON DELETE RESTRICT,
+ new_deadline_utc TEXT NOT NULL,
+ created_at_utc TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_class_extensions_lecturer ON class_deadline_extensions(lecturer_id);)CR1");
         execute("COMMIT;");
     } catch (...) {
         sqlite3_exec(connection_, "ROLLBACK;", nullptr, nullptr, nullptr);
