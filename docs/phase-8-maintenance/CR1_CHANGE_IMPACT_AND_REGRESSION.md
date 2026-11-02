@@ -13,8 +13,7 @@ deadline **for the whole class**, without manually extending every enrolled
 Student. Existing individual deadline extensions remain valid.
 
 **Change status:** v1.1 development implementation is in branch
-`feature/phase8-cr1-class-extensions`. Requires compilation, 128-test
-regression run and manual acceptance before merging/tagging.
+`feature/phase8-cr1-class-extensions`. Compiled, 128/128 regression tests passed and GUI functionality confirmed by the developer. The independent Windows v1.1 deployment acceptance remains pending.
 
 ## 2. Updated functional requirements
 
@@ -118,8 +117,10 @@ migrated database** as an undocumented downgrade. For reliable rollback:
 close v1.1, use the offline Restore utility to restore the verified v1.0
 backup (both database and attachments), then run the v1.0 executable.
 
-The separate branch must remain unmerged until tests and manual regression
-complete. No actual tests are claimed in this change report.
+The separate maintenance branch retains independent v1.0 source. The 128/128
+local regression pass and developer-reported GUI acceptance are recorded in
+`CR1_TEST_EVIDENCE_2026-11-02.md`. Standalone v1.1 release testing and
+supervisor acceptance remain outstanding.
 
 ## 5. Planned regression checklist
 
@@ -152,5 +153,6 @@ complete. No actual tests are claimed in this change report.
    related class/service interfaces.
 7. Only after results are recorded, consider v1.1 merge/release.
 
-**Status:** Code changes committed to maintenance branch. No claim of
-passing v1.1 build or acceptance tests until executed.
+**Status:** v1.1 code built; 128/128 local automated tests passed; developer
+reported the CR1 GUI works. Independent packaged v1.1 deployment and
+formal release sign-off are not yet complete.
