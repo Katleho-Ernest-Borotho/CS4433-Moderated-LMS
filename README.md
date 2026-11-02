@@ -1,5 +1,17 @@
 # CS4433 – Moderated Learning Management System
 
+## Windows releases, packages and source tags
+
+The project has two academic Windows release-candidate baselines: **v1.0** (original four-role LMS) and **v1.1** (CR1 class deadline extensions).
+
+- [GitHub Releases — Windows ZIPs and SHA-256 checksums](../../releases)
+- [Source tags — v1.0 and v1.1](../../tags)
+- [Publish/verify workflow](.github/workflows/publish-windows-release.yml)
+- [Release procedure and provenance](docs/RELEASE_GUIDE.md)
+
+Release publication is manual through Actions; the two entries appear after the workflow is run for each version. These are **pre-release academic builds**, not signed installers or supervisor-approved production distributions.
+
+
 Individual Software Engineering project for a secondary-school Moderated Learning Management System (LMS).
 
 ## Project scope
