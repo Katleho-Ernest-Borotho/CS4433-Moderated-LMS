@@ -84,6 +84,10 @@ void databaseCheck(const fs::path& p,const fs::path& attachments) {
            sqlite3_column_int(tables.get(),0)!=12)
             throw std::runtime_error("Backup does not contain the approved 12 tables");
         tables.reset();
+        auto foreignKeys=prepare(db,"PRAGMA foreign_key_check;");
+        if(sqlite3_step(foreignKeys.get())!=SQLITE_DONE)
+            throw std::runtime_error("Backup has invalid foreign key references");
+        foreignKeys.reset();
         auto refs=prepare(db,"SELECT DISTINCT attachment_ref FROM submission_versions "
                              "WHERE attachment_ref IS NOT NULL AND attachment_ref!='';");
         while(true) {
