@@ -21,6 +21,10 @@ public:
                         std::int64_t studentId, std::string_view newDeadlineUtc) override;
     std::string effectiveDeadline(const Session& actor, std::int64_t assignmentId,
                                   std::int64_t studentId) const override;
+    void grantClassExtension(const Session& lecturer, std::int64_t assignmentId,
+                             std::string_view newDeadlineUtc) override;
+    std::string classExtensionDeadline(const Session& actor,
+                                       std::int64_t assignmentId) const override;
 private:
     const IAuthenticationService& authentication_;
     IAcademicRepository& academic_;
