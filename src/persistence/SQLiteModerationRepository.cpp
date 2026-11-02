@@ -61,7 +61,9 @@ private:
 const char* moderationQuery=
     "SELECT r.result_id,s.submission_id,s.assignment_id,s.student_id,"
     "r.marked_version_id,v.version_id,u.username,c.code,a.title,"
-    "v.submitted_at_utc,COALESCE(de.new_deadline_utc,a.deadline_utc),r.feedback,"
+    "v.submitted_at_utc,MAX(a.deadline_utc,"
+    "COALESCE(de.new_deadline_utc,a.deadline_utc),"
+    "COALESCE(ce.new_deadline_utc,a.deadline_utc)),r.feedback,"
     "COALESCE(v.text_content,''),COALESCE(v.attachment_ref,''),"
     "a.maximum_mark,r.earned_mark,r.penalty_mark,r.final_mark,r.approved,"
     "COALESCE(r.released_at_utc,'') "
@@ -77,6 +79,7 @@ const char* moderationQuery=
     "WHERE v2.submission_id=s.submission_id) "
     "LEFT JOIN deadline_extensions de ON de.assignment_id=s.assignment_id "
     "AND de.student_id=s.student_id "
+    "LEFT JOIN class_deadline_extensions ce ON ce.assignment_id=s.assignment_id "
     "WHERE r.released_at_utc IS NULL ";
 
 ModerationRecord readModeration(sqlite3_stmt* s)
