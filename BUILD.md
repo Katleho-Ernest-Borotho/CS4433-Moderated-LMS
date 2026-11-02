@@ -202,3 +202,69 @@ submissions and marks must not be deleted to install this version.
 Backup/recovery, full acceptance testing, production security validation and
 remaining account-management enhancements must be addressed before using live
 student marks.
+
+## Phase 4 account-management checkpoint: three features together
+
+This batch completes three account operations with service-level Administrator
+authorisation and prepared SQLite statements. The existing twelve-table schema,
+user IDs, role assignments, course enrolments, submissions and released marks are
+not deleted or migrated.
+
+### 1. Rename an account
+
+In **Administrator → User management**, select a demonstration Student or Lecturer
+and choose **Rename selected**. Enter a new username (3–40 letters/digits/periods/
+underscores/hyphens). The selected row refreshes to the new name. The old name
+can no longer log in, but the new name works with the existing password.
+User ID and existing academic associations remain unchanged. Duplicate names,
+including different letter case, are rejected. The Administrator cannot rename
+their own currently signed-in account from this screen.
+
+### 2. Reactivate an account
+
+Select an **Inactive** demonstration account and click **Reactivate selected**.
+Confirm the dialog; its Status column becomes **Active**. Log out and verify
+that the account can sign in again using its original password. Repeated
+activation of an already active account is rejected. For an inactive account
+that needs new credentials, reset its password first or after reactivating it.
+
+### 3. Reset another user's password
+
+Select a demonstration user and click **Reset password**. Enter and confirm
+a new temporary password (12–1024 UTF-8 bytes). The previous password should
+be refused on the next login; the new one should succeed. Existing stored
+password hashes are replaced with new salted hashes through libsodium.
+Already issued sessions are invalidated by credential-hash revalidation.
+An Administrator cannot reset their own currently signed-in account via this
+screen. Passwords are never printed to the terminal or stored in plaintext.
+
+### Update and verification (Windows)
+
+Close the LMS first. In **Git Bash**:
+
+```bash
+cd /c/Users/borot/OneDrive/Desktop/CS4433-Moderated-LMS
+git switch feature/phase4-implementation
+git pull --ff-only origin feature/phase4-implementation
+```
+
+Then in **MSYS2 UCRT64**:
+
+```bash
+cd /c/Users/borot/OneDrive/Desktop/CS4433-Moderated-LMS
+cmake -S . -B /c/dev/cs4433-lms-build -G Ninja -DCMAKE_BUILD_TYPE=Debug
+cmake --build /c/dev/cs4433-lms-build
+ctest --test-dir /c/dev/cs4433-lms-build --output-on-failure
+/c/dev/cs4433-lms-build/ModeratedLMS.exe
+```
+
+The suite now includes **101 test cases**. This is the expected test count
+until run on the development computer; it is not a claim of a passing build.
+Save the first CMake/compiler error if the build fails.
+
+Security notes: only an authenticated Administrator can use the above service
+operations; inactive users cannot log in; credentials are stored as password
+hashes; existing sessions reject changed usernames or password hashes. Use
+temporary accounts and passwords for this demonstration. Operational recovery,
+full role editing, periodic backups and production readiness still need
+separate review and testing.
