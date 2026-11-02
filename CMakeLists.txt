@@ -45,6 +45,14 @@ qt_add_executable(ModeratedLMS
 )
 target_link_libraries(ModeratedLMS PRIVATE Qt6::Widgets lms_core)
 
+# Deliberately OFF in normal builds and distribution packages.
+# Enable only for an authorised local administrator recovery on the development PC.
+option(LMS_ENABLE_LOCAL_ADMIN_RECOVERY "Build the local admin recovery utility" OFF)
+if(LMS_ENABLE_LOCAL_ADMIN_RECOVERY)
+    qt_add_executable(ModeratedLMSAdminRecovery src/tools/AdminRecovery.cpp)
+    target_link_libraries(ModeratedLMSAdminRecovery PRIVATE Qt6::Widgets lms_core)
+endif()
+
 include(CTest)
 if(BUILD_TESTING)
     find_package(GTest CONFIG REQUIRED)
