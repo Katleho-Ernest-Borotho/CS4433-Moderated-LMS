@@ -6,8 +6,10 @@
 #include "lms/application/ISubmissionService.h"
 #include "lms/application/IMarkingService.h"
 #include "lms/application/IModerationService.h"
+#include "lms/application/AdminReportingService.h"
 
 #include <QMainWindow>
+#include <QString>
 #include <optional>
 
 class QLabel;
@@ -23,11 +25,13 @@ class AcademicPanel;
 class AssignmentPanel;
 class MarkingPanel;
 class ResultsPanel;
+class MaintenancePanel;
 class LoginWindow final : public QMainWindow {
 public:
     LoginWindow(IAuthenticationService& authentication, BootstrapService& bootstrap,
                 IAcademicManagementService& accounts, ISubmissionService& submissions,
-                IMarkingService& marking, IModerationService& moderation);
+                IMarkingService& marking, IModerationService& moderation,
+                AdminReportingService& reporting, sqlite3* database, QString dataDirectory);
 
 private:
     QWidget* createSetupPage();
@@ -51,6 +55,9 @@ private:
     ISubmissionService& submissions_;
     IMarkingService& marking_;
     IModerationService& moderation_;
+    AdminReportingService& reporting_;
+    sqlite3* database_ = nullptr;
+    QString dataDirectory_;
     QStackedWidget* pages_ = nullptr;
     QWidget* setupPage_ = nullptr;
     QWidget* loginPage_ = nullptr;
@@ -62,6 +69,7 @@ private:
     AssignmentPanel* assignmentsPanel_ = nullptr;
     MarkingPanel* markingPanel_ = nullptr;
     ResultsPanel* resultsPanel_ = nullptr;
+    MaintenancePanel* maintenancePanel_ = nullptr;
     QTableWidget* myCoursesTable_ = nullptr;
     QLineEdit* setupUsername_ = nullptr;
     QLineEdit* setupPassword_ = nullptr;
