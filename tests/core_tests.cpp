@@ -4,6 +4,8 @@
 #include "lms/application/SubmissionManagementService.h"
 #include "lms/application/MarkingService.h"
 #include "lms/application/ModerationService.h"
+#include "lms/application/AdminReportingService.h"
+#include "lms/persistence/BackupManager.h"
 #include "lms/domain/LatePenaltyPolicy.h"
 #include "lms/domain/UtcDateTime.h"
 #include "lms/domain/User.h"
@@ -1493,4 +1495,178 @@ TEST_F(AccountRecoveryTests, ResetMissingAccountDoesNotCreateNewUser)
     EXPECT_THROW(management.resetUserPassword(adminSession(),999999,
                  "FreshPassword456!"),std::invalid_argument);
     EXPECT_EQ(management.listUsers(adminSession()).size(),2U);
+}
+
+
+TEST_F(UserManagementTests, AdminReportHasCorrectAggregatesAndExcludesStudentPrivateText)
+{
+    bootstrap.createInitialAdministrator("admin1","LongSecretPassword123!");
+    const auto admin=authentication.logIn("admin1","LongSecretPassword123!");
+    management.createUser(admin,"student1","StudentPassword123!",lms::Role::Student);
+    const auto dep=management.createDepartment(admin,"Computer Science");
+    management.createCourse(admin,dep.id,"CS4433","Software Engineering");
+    lms::AdminReportingService service(authentication,database.connection());
+    const auto report=service.generate(admin);
+    EXPECT_EQ(report.activeUsers,2);
+    EXPECT_EQ(report.departments,1);
+    EXPECT_EQ(report.courses,1);
+    EXPECT_EQ(report.courseRows.size(),1U);
+    const auto csv=lms::AdminReportingService::toCsv(report);
+    EXPECT_NE(csv.find("CS4433"),std::string::npos);
+    EXPECT_EQ(csv.find("LongSecretPassword123!"),std::string::npos);
+    EXPECT_EQ(csv.find("StudentPassword123!"),std::string::npos);
+    EXPECT_EQ(csv.find("password_hash"),std::string::npos);
+}
+
+TEST_F(UserManagementTests, ReportRejectsStudentSessionAndInvalidatedAdminSession)
+{
+    bootstrap.createInitialAdministrator("admin1","LongSecretPassword123!");
+    const auto admin=authentication.logIn("admin1","LongSecretPassword123!");
+    const auto user=management.createUser(admin,"student1","StudentPassword123!",
+                                         lms::Role::Student);
+    lms::AdminReportingService service(authentication,database.connection());
+    const auto student=authentication.logIn("student1","StudentPassword123!");
+    EXPECT_THROW(service.generate(student),lms::AuthenticationError);
+    users.resetPasswordHash(admin.userId(),passwords.hash("FreshAdminPassword789!"));
+    EXPECT_THROW(service.generate(admin),lms::AuthenticationError);
+}
+
+TEST_F(UserManagementTests, CsvEscapesUnsafeCourseValues)
+{
+    bootstrap.createInitialAdministrator("admin1","LongSecretPassword123!");
+    const auto admin=authentication.logIn("admin1","LongSecretPassword123!");
+    const auto dep=management.createDepartment(admin,"Computing");
+    management.createCourse(admin,dep.id,"=1+1","Quoted \" title");
+    lms::AdminReportingService report(authentication,database.connection());
+    const auto csv=lms::AdminReportingService::toCsv(report.generate(admin));
+    EXPECT_NE(csv.find("'=1+1"),std::string::npos);
+    EXPECT_NE(csv.find("\"\" title"),std::string::npos);
+}
+
+class BackupTests : public ::testing::Test {
+protected:
+    std::filesystem::path root=std::filesystem::temp_directory_path()/
+        ("moderated_lms_backup_test_"+
+         std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
+    std::filesystem::path data=root/"data";
+    std::filesystem::path output=root/"backup-exports";
+    std::filesystem::path dbFile=data/"lms.sqlite3";
+    void SetUp() override
+    {
+        std::filesystem::create_directories(data/"attachments"/"files");
+        std::filesystem::create_directories(output);
+        lms::SqliteDatabase database(dbFile.string());
+        database.initializeSchemaFromFile(
+            (std::filesystem::current_path()/"lms_schema.sql").string());
+        ASSERT_EQ(sqlite3_exec(database.connection(),
+            "INSERT INTO users(username,password_hash,role,active) "
+            "VALUES('student1','hash-only','Student',1);",
+            nullptr,nullptr,nullptr),SQLITE_OK);
+    }
+    void TearDown() override
+    {
+        std::error_code ec;
+        std::filesystem::remove_all(root,ec);
+        std::filesystem::remove_all(root.parent_path()/
+            "ModeratedLMS_PreRestore_Safety",ec);
+    }
+    lms::BackupInfo makeBackup()
+    {
+        lms::SqliteDatabase database(dbFile.string());
+        return lms::BackupManager::create(database.connection(),data,output);
+    }
+    std::string savedUser() const
+    {
+        lms::SqliteDatabase database(dbFile.string());
+        auto* db=database.connection();
+        sqlite3_stmt* statement=nullptr;
+        if(sqlite3_prepare_v2(db,"SELECT username FROM users ORDER BY user_id LIMIT 1;",
+                              -1,&statement,nullptr)!=SQLITE_OK)
+            throw std::runtime_error("Could not read user");
+        const int rc=sqlite3_step(statement);
+        if(rc!=SQLITE_ROW) {sqlite3_finalize(statement);return "";}
+        const std::string name=reinterpret_cast<const char*>(
+            sqlite3_column_text(statement,0));
+        sqlite3_finalize(statement);
+        return name;
+    }
+};
+
+TEST_F(BackupTests, FullBackupPreservesExistingDatabaseAndManifest)
+{
+    const auto info=makeBackup();
+    EXPECT_TRUE(std::filesystem::exists(info.folder/"lms.sqlite3"));
+    EXPECT_TRUE(std::filesystem::exists(info.folder/"manifest.txt"));
+    EXPECT_EQ(info.attachmentCount,0U);
+    EXPECT_GT(info.totalBytes,0U);
+    EXPECT_NO_THROW(lms::BackupManager::verify(info.folder));
+    EXPECT_EQ(savedUser(),"student1");
+}
+
+TEST_F(BackupTests, BackupsIncludeStoredAttachments)
+{
+    const std::string name="0123456789abcdef0123456789abcdef.txt";
+    const auto attachment=data/"attachments"/"files"/name;
+    {
+        std::ofstream output(attachment,std::ios::binary);
+        output<<"student file bytes";
+    }
+    const auto info=makeBackup();
+    EXPECT_EQ(info.attachmentCount,1U);
+    EXPECT_TRUE(std::filesystem::exists(info.folder/"attachments"/"files"/name));
+    EXPECT_NO_THROW(lms::BackupManager::verify(info.folder));
+}
+
+TEST_F(BackupTests, TamperedDatabaseBackupIsRejectedBeforeRestore)
+{
+    const auto info=makeBackup();
+    {
+        std::ofstream output(info.folder/"lms.sqlite3",std::ios::binary|std::ios::app);
+        output<<"tamper";
+    }
+    EXPECT_THROW(lms::BackupManager::verify(info.folder),std::runtime_error);
+    EXPECT_EQ(savedUser(),"student1");
+}
+
+TEST_F(BackupTests, MissingAttachmentFailsIntegrityCheck)
+{
+    const std::string name="0123456789abcdef0123456789abcdef.pdf";
+    { std::ofstream file(data/"attachments"/"files"/name);file<<"data"; }
+    const auto info=makeBackup();
+    std::filesystem::remove(info.folder/"attachments"/"files"/name);
+    EXPECT_THROW(lms::BackupManager::verify(info.folder),std::runtime_error);
+}
+
+TEST_F(BackupTests, RestoreRollsBackToPreviousDatasetAndKeepsSafetyCopy)
+{
+    const auto info=makeBackup();
+    {
+        lms::SqliteDatabase db(dbFile.string());
+        ASSERT_EQ(sqlite3_exec(db.connection(),
+            "UPDATE users SET username='changedafterbackup';",
+            nullptr,nullptr,nullptr),SQLITE_OK);
+    }
+    ASSERT_EQ(savedUser(),"changedafterbackup");
+    const auto safety=lms::BackupManager::restore(info.folder,data);
+    EXPECT_EQ(savedUser(),"student1");
+    EXPECT_TRUE(std::filesystem::exists(safety/"lms.sqlite3"));
+    EXPECT_NO_THROW(lms::BackupManager::verify(safety));
+}
+
+TEST_F(BackupTests, RestoreRejectsTamperedBackupWithoutChangingLiveData)
+{
+    const auto info=makeBackup();
+    {
+        std::ofstream output(info.folder/"manifest.txt",std::ios::binary|std::ios::app);
+        output<<"broken-record";
+    }
+    EXPECT_THROW(lms::BackupManager::restore(info.folder,data),std::runtime_error);
+    EXPECT_EQ(savedUser(),"student1");
+}
+
+TEST_F(BackupTests, BackupRejectsDestinationInsideLiveDataDirectory)
+{
+    lms::SqliteDatabase db(dbFile.string());
+    EXPECT_THROW(lms::BackupManager::create(db.connection(),data,data/"subfolder"),
+                 std::invalid_argument);
 }
