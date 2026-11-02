@@ -1668,3 +1668,50 @@ TEST_F(BackupTests, BackupRejectsDestinationInsideLiveDataDirectory)
     EXPECT_THROW(lms::BackupManager::create(db.connection(),data,data/"subfolder"),
                  std::invalid_argument);
 }
+
+
+TEST_F(BackupTests, RestoreReturnsAttachedSubmissionFilesWithDatabase)
+{
+    const std::string attachment="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.txt";
+    {
+        std::ofstream file(data/"attachments"/"files"/attachment,std::ios::binary);
+        file<<"original lab report";
+    }
+    const auto old=makeBackup();
+    {
+        std::ofstream file(data/"attachments"/"files"/attachment,
+                           std::ios::binary|std::ios::trunc);
+        file<<"modified attachment";
+    }
+    const auto safety=lms::BackupManager::restore(old.folder,data);
+    std::ifstream restored(data/"attachments"/"files"/attachment,std::ios::binary);
+    const std::string content{std::istreambuf_iterator<char>(restored),
+                              std::istreambuf_iterator<char>()};
+    EXPECT_EQ(content,"original lab report");
+    EXPECT_TRUE(std::filesystem::exists(
+        safety/"attachments"/"files"/attachment));
+}
+
+TEST_F(BackupTests, MissingReferencedAttachmentCannotBeBackedUp)
+{
+    {
+        lms::SqliteDatabase database(dbFile.string());
+        auto* db=database.connection();
+        ASSERT_EQ(sqlite3_exec(db,
+            "INSERT INTO departments(name) VALUES('Computing');"
+            "INSERT INTO courses(department_id,code,title) "
+            "VALUES(1,'CS4433','Software Engineering');"
+            "INSERT INTO assignments(course_id,title,deadline_utc,maximum_mark) "
+            "VALUES(1,'Lab','2030-10-28T12:00:00Z',100);"
+            "INSERT INTO submissions(student_id,assignment_id,state) "
+            "VALUES(1,1,'Submitted');"
+            "INSERT INTO submission_versions(submission_id,version_number,"
+            "submitted_at_utc,attachment_ref,is_late) "
+            "VALUES(1,1,'2030-10-28T11:00:00Z',"
+            "'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb.pdf',0);",
+            nullptr,nullptr,nullptr),SQLITE_OK);
+        EXPECT_THROW(lms::BackupManager::create(db,data,output),
+                     std::runtime_error);
+    }
+    EXPECT_TRUE(std::filesystem::exists(dbFile));
+}
