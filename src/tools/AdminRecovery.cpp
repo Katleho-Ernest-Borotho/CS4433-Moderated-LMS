@@ -6,8 +6,10 @@
 #include "lms/security/SodiumPasswordHasher.h"
 
 #include <QApplication>
+#include <QByteArray>
 #include <QCoreApplication>
 #include <QDateTime>
+#include <QFile>
 #include <QDialog>
 #include <QDialogButtonBox>
 #include <QDir>
@@ -22,6 +24,8 @@
 #include <QVBoxLayout>
 
 #include <sqlite3.h>
+#include <cstdint>
+#include <cstddef>
 #include <exception>
 #include <stdexcept>
 #include <string>
@@ -133,8 +137,8 @@ int main(int argc,char** argv)
         for(const auto& user:users.listUsers()) {
             if(user.role!=lms::Role::Administrator)continue;
             administrators.push_back({user.id,QString::fromStdString(user.username),user.active});
-            options<<QString("%1 (%2)").arg(administrators.back().username,
-                                            user.active?"Active":"Inactive");
+            options<<QString("%1 (%2)").arg(administrators.back().username)
+                                    .arg(user.active?"Active":"Inactive");
         }
         if(administrators.empty()) {
             QMessageBox::critical(nullptr,"No Administrator found",
