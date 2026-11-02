@@ -7,18 +7,27 @@ uses Qt 6 Widgets for the GUI, SQLite for offline data persistence, and
 libsodium salted password hashes. There are four roles: Administrator,
 Lecturer, Student and Head of Department.
 
-## Implementation and phase work
+## Current branch: v1.1 (CR1 whole-class extensions)
 
-The implementation branch is `feature/phase4-implementation`. It includes
-authentication and user management, course/enrolment management, assignment
-submission and version history, individual extensions, late penalties, lecturer
-marking and feedback, HoD moderation/release, audit records, and administrator
-backup/restore/reporting tools.
+This maintenance branch (`feature/phase8-cr1-class-extensions`) extends
+the original v1.0 codebase with **whole-class assignment deadline extensions**.
+The existing individual-extension rule, 12 original database tables,
+role permissions and marking/release workflow remain intact. Startup
+adds one new SQLite table for v1.1.
 
-These features have been exercised on the development laptop. **This is not
-yet a final validated v1.0 release.** Phase 5 system/acceptance measurements
-and Gate 3 evidence remain required, as do Phase 6 QA, Phase 7 packaging and
-Phase 8 whole-class extensions (CR1) for version 1.1.
+**Verified:** 128/128 local GoogleTest/CTest cases, Windows UCRT64 CI
+for the implementation checkpoint, and developer-reported GUI acceptance.
+The v1.0 package previously launched and worked on a second Windows
+laptop. **The separate v1.1 Release package and second-laptop test are
+not complete yet.** Do not confuse these two deployment results.
+
+For the maintenance-specific design, editable diagrams, evidence, and
+Windows release preparation, see
+[Phase 8 CR1 documents](docs/phase-8-maintenance/).
+
+The v1.0 implementation baseline is retained separately in
+`feature/phase4-implementation`. Do not overwrite its signed-off
+design documents or delete the verified rollback backup.
 
 ## Build and verification
 
@@ -33,9 +42,12 @@ Phase 8 whole-class extensions (CR1) for version 1.1.
 - Backup/restore operation: [OPERATIONS_BACKUP_REPORTS.md](OPERATIONS_BACKUP_REPORTS.md).
 - Administrator password recovery: [ADMIN_RECOVERY.md](ADMIN_RECOVERY.md).
 
-The automated test suite currently contains 115 GoogleTest cases. This is
-a source count: verify the actual CI/CTest results for the relevant commit.
-No unmeasured coverage percentage or unperformed acceptance test is claimed.
+The v1.1 suite contains **128 GoogleTest cases**, all of which passed
+locally in **53.26 seconds** at the recorded checkpoint. For a new revision,
+rerun CTest and check the exact CI SHA. Version 1.1 GUI acceptance was
+reported by the developer, while independent v1.1 deployment acceptance
+remains outstanding. Do not reuse the v1.0 92% coverage percentage as a
+measured v1.1 value without an updated gcovr run.
 
 ## Phase documents
 
