@@ -10,11 +10,13 @@ import subprocess
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "docs/phase-6-configuration-qa/MEASURED_CODE_METRICS.md"
 SCOPES = ("src/application", "src/domain", "src/persistence",
-          "src/security", "src/ui", "src/tools", "include", "tests")
+          "src/security", "src/ui", "src/tools", "src", "include", "tests")
 rows = []
 summary = defaultdict(lambda: [0, 0, 0])
 for group in SCOPES:
     for path in (ROOT / group).rglob("*"):
+        if group == "src" and path.parent != ROOT / "src":
+            continue
         if not path.is_file() or path.suffix not in {".cpp", ".h", ".hpp"}:
             continue
         contents = path.read_text(encoding="utf-8", errors="replace").splitlines()
@@ -37,7 +39,7 @@ lines = [
     "# CS4433 — Measured C++ Source Metrics",
     "",
     f"Generated at (UTC): {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')}",
-    f"Git commit: \`{sha}\`",
+    f"Git commit: `{sha}`",
     "",
     "## Files and lines by code layer",
     "",
@@ -45,7 +47,7 @@ lines = [
     "|---|---:|---:|---:|"
 ]
 for key in SCOPES:
-    v=summary[key];lines.append(f"| \`{key}\` | {v[0]} | {v[1]} | {v[2]} |")
+    v=summary[key];lines.append(f"| `{key}` | {v[0]} | {v[1]} | {v[2]} |")
 lines+=["",f"**Totals:** {sum(x[0] for x in summary.values())} files, "
         f"{sum(x[1] for x in summary.values())} physical lines. ",
         "",
@@ -53,7 +55,7 @@ lines+=["",f"**Totals:** {sum(x[0] for x in summary.values())} files, "
         "| File | Physical lines | Nonblank lines | Approx. code lines |",
         "|---|---:|---:|---:|"]
 for name,pl,nb,ap in sorted(rows,key=lambda x:x[1],reverse=True)[:10]:
-    lines.append(f"| \`{name}\` | {pl} | {nb} | {ap} |")
+    lines.append(f"| `{name}` | {pl} | {nb} | {ap} |")
 lines+=["","## Method complexity interpretation","",
 "These are **physical line counts**, not McCabe cyclomatic complexity.",
 "Comments are filtered approximately. To obtain accurate per-function",
