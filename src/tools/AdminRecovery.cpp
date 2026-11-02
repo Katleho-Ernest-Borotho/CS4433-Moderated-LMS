@@ -18,6 +18,7 @@
 #include <QInputDialog>
 #include <QLabel>
 #include <QLineEdit>
+#include <QLockFile>
 #include <QMessageBox>
 #include <QStandardPaths>
 #include <QStringList>
@@ -130,6 +131,12 @@ int main(int argc,char** argv)
             "Continue?",QMessageBox::Yes|QMessageBox::No,QMessageBox::No)!=QMessageBox::Yes)
             return 0;
 
+        QLockFile maintenanceLock(directory + "/lms.lock");
+        if(!maintenanceLock.tryLock(0)) {
+            QMessageBox::critical(nullptr,"Close the LMS first",
+                "LMS is running or another maintenance tool has locked its data.");
+            return 1;
+        }
         lms::SqliteDatabase database(dbFile.toStdString());
         lms::SQLiteRecordRepository users(database);
         std::vector<AdminAccount> administrators;
