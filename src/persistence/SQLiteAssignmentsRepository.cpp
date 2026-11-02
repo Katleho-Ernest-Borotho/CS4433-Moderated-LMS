@@ -95,10 +95,14 @@ Assignment mapAssignment(sqlite3_stmt* s)
 std::string effective(sqlite3* db,std::int64_t assignment,std::int64_t student)
 {
     auto s=prepare(db,
-        "SELECT COALESCE(("
-        " SELECT de.new_deadline_utc FROM deadline_extensions de "
-        " WHERE de.assignment_id=a.assignment_id AND de.student_id=?2"
-        "),a.deadline_utc) FROM assignments a WHERE a.assignment_id=?1;");
+        "SELECT MAX(a.deadline_utc,"
+        "COALESCE(de.new_deadline_utc,a.deadline_utc),"
+        "COALESCE(ce.new_deadline_utc,a.deadline_utc)) "
+        "FROM assignments a "
+        "LEFT JOIN deadline_extensions de ON de.assignment_id=a.assignment_id "
+        "AND de.student_id=?2 "
+        "LEFT JOIN class_deadline_extensions ce ON ce.assignment_id=a.assignment_id "
+        "WHERE a.assignment_id=?1;");
     bindId(s.get(),1,assignment);
     bindId(s.get(),2,student);
     const int result=sqlite3_step(s.get());
