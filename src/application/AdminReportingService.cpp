@@ -94,7 +94,7 @@ std::string AdminReportingService::toCsv(const AdminReport& r) {
     std::ostringstream out;
     out<<"Record,Name,Value,Department,Enrolled,Assignments,Submissions,Released results\r\n";
     const auto metric=[&out](const char* name,std::int64_t number) {
-        out<<"Metric,"<<csvCell(name)<<","<<number<<",,,,\r\n";
+        out<<"Metric,"<<csvCell(name)<<","<<number<<",,,,,\r\n";
     };
     metric("Active accounts",r.activeUsers);
     metric("Inactive accounts",r.inactiveUsers);
