@@ -1567,8 +1567,6 @@ protected:
     {
         std::error_code ec;
         std::filesystem::remove_all(root,ec);
-        std::filesystem::remove_all(root.parent_path()/
-            "ModeratedLMS_PreRestore_Safety",ec);
     }
     lms::BackupInfo makeBackup()
     {
