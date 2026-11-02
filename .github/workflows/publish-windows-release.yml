@@ -51,6 +51,7 @@ jobs:
         with:
           ref: ${{ steps.select.outputs.sha }}
           persist-credentials: false
+          fetch-depth: 0
 
       - name: Install Windows UCRT64 build and packaging tools
         uses: msys2/setup-msys2@v2
@@ -156,14 +157,15 @@ jobs:
 
           $changes
 
-          - Source revision: `$env:SHA`
+          - Source revision: $env:SHA
           - Regression test gate: $env:TEST_COUNT automated cases passed during this package build.
-          - Download the `ModeratedLMS_$env:TAG` Windows UCRT64 ZIP below and extract the **entire** directory.
-          - Run `ModeratedLMS.exe` on a Windows computer. `lms_schema.sql`, Qt plugins and DLLs must remain alongside it.
-          - The ZIP includes a checksum file (`SHA256SUMS.txt`) and exact-build provenance; school data is not bundled.
-          - This is a **pre-release / academic demonstration build**, not a signed production installer.
-          - Formal supervisor sign-off, complete negative-case acceptance evidence and third-party redistribution review remain separate.
-          - For v1.1, perform a verified backup before opening an existing v1.0 database.
+          - Download the Windows UCRT64 ZIP below and extract the entire folder.
+          - Run ModeratedLMS.exe on a Windows computer; keep lms_schema.sql, plugins and DLLs alongside it.
+          - The ZIP contains RELEASE_PROVENANCE.txt. SHA256SUMS.txt is provided as a separate release asset.
+          - No school data, learner attachments or private credentials are included.
+          - This is a pre-release for academic demonstration, not a signed production installer.
+          - Supervisor sign-off, negative-case acceptance and third-party redistribution review are still pending.
+          - For v1.1, make a verified backup before opening an existing v1.0 database.
           "@ | Set-Content -Encoding utf8 RELEASE_NOTES.txt
           $archive = "release-assets/ModeratedLMS_$env:TAG" + "_windows_ucrt64.zip"
           gh release create $env:TAG $archive "release-assets/SHA256SUMS.txt" `
