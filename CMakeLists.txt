@@ -17,6 +17,8 @@ add_library(lms_core
     src/domain/User.cpp
     src/domain/LatePenaltyPolicy.cpp
     src/persistence/SqliteDatabase.cpp
+    src/persistence/BackupManager.cpp
+    src/persistence/BackupRestore.cpp
     src/persistence/SQLiteRecordRepository.cpp
     src/persistence/SQLiteAcademicRepository.cpp
     src/persistence/SQLiteAssignmentsRepository.cpp
@@ -28,6 +30,7 @@ add_library(lms_core
     src/application/AuthenticationService.cpp
     src/application/BootstrapService.cpp
     src/application/AcademicManagementService.cpp
+    src/application/AdminReportingService.cpp
     src/application/SubmissionManagementService.cpp
     src/application/MarkingService.cpp
     src/application/ModerationService.cpp
@@ -42,6 +45,7 @@ qt_add_executable(ModeratedLMS
     src/ui/AssignmentPanel.cpp
     src/ui/MarkingPanel.cpp
     src/ui/ResultsPanel.cpp
+    src/ui/MaintenancePanel.cpp
 )
 target_link_libraries(ModeratedLMS PRIVATE Qt6::Widgets lms_core)
 
@@ -52,6 +56,10 @@ if(LMS_ENABLE_LOCAL_ADMIN_RECOVERY)
     qt_add_executable(ModeratedLMSAdminRecovery src/tools/AdminRecovery.cpp)
     target_link_libraries(ModeratedLMSAdminRecovery PRIVATE Qt6::Widgets lms_core)
 endif()
+
+# A restore tool can never share a database connection with the running LMS.
+qt_add_executable(ModeratedLMSRestore src/tools/RestoreBackup.cpp)
+target_link_libraries(ModeratedLMSRestore PRIVATE Qt6::Widgets lms_core)
 
 include(CTest)
 if(BUILD_TESTING)
