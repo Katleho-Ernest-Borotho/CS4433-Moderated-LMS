@@ -1,0 +1,80 @@
+name: C++17 Qt6 LMS - build, tests and coverage
+
+on:
+  push:
+    branches:
+      - main
+      - feature/phase4-implementation
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows-ucrt64:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Install MSYS2 UCRT64 development tools
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: >-
+            mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-cmake
+            mingw-w64-ucrt-x86_64-ninja
+            mingw-w64-ucrt-x86_64-pkgconf
+            mingw-w64-ucrt-x86_64-qt6-base
+            mingw-w64-ucrt-x86_64-sqlite3
+            mingw-w64-ucrt-x86_64-libsodium
+            mingw-w64-ucrt-x86_64-gtest
+            mingw-w64-ucrt-x86_64-gcovr
+            mingw-w64-ucrt-x86_64-cppcheck
+
+      - name: Configure with GCC coverage
+        run: |
+          cmake -S . -B build/ci -G Ninja \
+            -DCMAKE_BUILD_TYPE=Debug -DLMS_ENABLE_COVERAGE=ON
+
+      - name: Build all targets
+        run: cmake --build build/ci --parallel 2
+
+      - name: Run GoogleTest / CTest integration suite
+        run: |
+          cd build/ci
+          ctest --output-on-failure --output-junit ctest-results.xml
+
+      - name: Measure domain and application line coverage
+        run: |
+          gcovr -r . build/ci \
+            --filter 'src/domain/' --filter 'src/application/' \
+            --txt --xml build/ci/business-coverage.xml \
+            --html-details build/ci/business-coverage.html
+
+      - name: Run static analysis for quality review
+        run: |
+          cppcheck --enable=warning,performance,portability \
+            --std=c++17 --suppress=missingIncludeSystem \
+            -I include src 2> build/ci/cppcheck-report.txt || true
+          echo "Static analysis report written (review findings before release)"
+
+      - name: Archive build evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CS4433-phase5-windows-ucrt64
+          path: |
+            build/ci/ctest-results.xml
+            build/ci/business-coverage.xml
+            build/ci/business-coverage.html
+            build/ci/business-coverage.*
+            build/ci/cppcheck-report.txt
+          if-no-files-found: warn
