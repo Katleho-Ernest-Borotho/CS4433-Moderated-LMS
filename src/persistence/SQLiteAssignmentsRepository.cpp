@@ -239,4 +239,76 @@ std::string SQLiteRecordRepository::findEffectiveDeadline(
 {
     return effective(database_.connection(),assignment,student);
 }
+
+std::string SQLiteRecordRepository::findClassExtensionDeadline(std::int64_t assignment) const
+{
+    auto* db=database_.connection();
+    auto s=prepare(db,
+        "SELECT new_deadline_utc FROM class_deadline_extensions WHERE assignment_id=?1;");
+    bindId(s.get(),1,assignment);
+    const int status=sqlite3_step(s.get());
+    if(status==SQLITE_DONE)return {};
+    if(status!=SQLITE_ROW)throw std::runtime_error(sqlite3_errmsg(db));
+    return columnText(s.get(),0);
+}
+
+void SQLiteRecordRepository::saveClassExtension(
+    std::int64_t assignment,std::int64_t lecturer,std::string_view deadline,
+    std::string_view changedAtUtc)
+{
+    auto* db=database_.connection();
+    Transaction tx(db);
+    auto a=prepare(db,
+        "SELECT course_id,deadline_utc FROM assignments WHERE assignment_id=?1;");
+    bindId(a.get(),1,assignment);
+    const int found=sqlite3_step(a.get());
+    if(found==SQLITE_DONE)throw std::invalid_argument("Assignment not found");
+    if(found!=SQLITE_ROW)throw std::runtime_error(sqlite3_errmsg(db));
+    const auto course=sqlite3_column_int64(a.get(),0);
+    const auto original=columnText(a.get(),1);
+    a.reset();
+    if(!lecturerAssigned(db,lecturer,course))
+        throw std::invalid_argument("Lecturer is not assigned to this course");
+
+    auto existing=prepare(db,
+        "SELECT new_deadline_utc FROM class_deadline_extensions WHERE assignment_id=?1;");
+    bindId(existing.get(),1,assignment);
+    const int previousResult=sqlite3_step(existing.get());
+    if(previousResult!=SQLITE_ROW && previousResult!=SQLITE_DONE)
+        throw std::runtime_error(sqlite3_errmsg(db));
+    const auto previous=previousResult==SQLITE_ROW?columnText(existing.get(),0):original;
+    existing.reset();
+    if(deadline<=std::string_view(previous))
+        throw std::invalid_argument("Class extension must be later than current class deadline");
+
+    // An already-marked submission has a computed penalty. Do not silently
+    // invalidate any saved mark or approved/released result.
+    auto assessed=prepare(db,
+        "SELECT EXISTS(SELECT 1 FROM assessment_results r "
+        "JOIN submissions s ON s.submission_id=r.submission_id "
+        "WHERE s.assignment_id=?1);");
+    bindId(assessed.get(),1,assignment);
+    if(sqlite3_step(assessed.get())!=SQLITE_ROW)
+        throw std::runtime_error(sqlite3_errmsg(db));
+    if(sqlite3_column_int(assessed.get(),0)!=0)
+        throw std::invalid_argument("Class extension cannot change an assignment after marking");
+    assessed.reset();
+
+    auto insert=prepare(db,
+        "INSERT INTO class_deadline_extensions"
+        "(assignment_id,lecturer_id,new_deadline_utc,created_at_utc)"
+        "VALUES(?1,?2,?3,?4) ON CONFLICT(assignment_id) DO UPDATE SET "
+        "lecturer_id=excluded.lecturer_id,"
+        "new_deadline_utc=excluded.new_deadline_utc,"
+        "created_at_utc=excluded.created_at_utc;");
+    bindId(insert.get(),1,assignment);
+    bindId(insert.get(),2,lecturer);
+    bindText(insert.get(),3,deadline);
+    bindText(insert.get(),4,changedAtUtc);
+    if(sqlite3_step(insert.get())!=SQLITE_DONE)
+        throw std::runtime_error(sqlite3_errmsg(db));
+    insert.reset();
+    tx.commit();
+}
+
 } // namespace lms
