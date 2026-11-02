@@ -48,7 +48,7 @@ For this offline Qt Widgets desktop application, these messages do not by themse
 | Generated directory | PASS — path printed |
 | Second laptop GUI launch | **OBSERVED PASS** — Initial Administrator setup window visibly open in supplied photograph; toolchain independence still to verify |
 | First-run setup screen | **OBSERVED PASS** — Administrator setup form displayed |
-| First Administrator creation, offline workflow and restart persistence | **NOT TESTED YET** |
+| Administrator setup, academic workflow, persistence, offline operation | **USER-REPORTED PASS** on second laptop (four acceptance checks) |
 | Windows-specific redistributable license review | **NOT COMPLETED** |
 
 This log validates package construction **on the development laptop**, not portability. Do not call v1.0 fully deployed until the second Windows laptop acceptance checklist is completed and signed off. A source commit SHA was not provided in the terminal log; capture `git rev-parse HEAD` for final artifact provenance.
@@ -76,3 +76,23 @@ information. If needed, save a tightly cropped evidence copy separately.
 **Next:** Complete setup using synthetic credentials, verify all four roles,
 restart persistence and offline operation, and then record the outcomes in
 `WINDOWS_RELEASE_AND_SECOND_LAPTOP_TEST.md`.
+
+## Follow-up execution report from second laptop
+
+The developer subsequently reported that the following acceptance checks
+**all passed** on the independent Windows laptop:
+
+1. Initial Administrator account setup and login.
+2. Test academic workflow (users, roles, course/enrolment/assignment operations).
+3. Records retained after fully closing and reopening the application.
+4. Core functionality with the laptop offline.
+
+**Evidence provenance:** these four outcomes are recorded from the user's
+explicit confirmation; only the first-run application launch was accompanied
+by a photograph. No per-test screenshots, timings or independent installation
+inventory have been supplied for the four subsequent results. Record them as
+**tester-reported PASS**, not externally audited results.
+
+Full D-01–D-12 checklist, restore lock test, full four-role end-to-end
+release and redistribution/licensing review remain separate acceptance
+items. The v1.0 branch remains untagged while those items are pending.
