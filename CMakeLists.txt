@@ -71,6 +71,14 @@ endif()
 qt_add_executable(ModeratedLMSRestore src/tools/RestoreBackup.cpp)
 target_link_libraries(ModeratedLMSRestore PRIVATE Qt6::Widgets lms_core)
 
+# Isolated, optional acceptance benchmark: 800 stored Student accounts,
+# 20 measured valid logins (NFR-01). Does not touch the live LMS database.
+option(LMS_ENABLE_NFR_BENCHMARK "Build isolated NFR-01 login benchmark" OFF)
+if(LMS_ENABLE_NFR_BENCHMARK)
+    add_executable(lms_login_benchmark tests/login_benchmark.cpp)
+    target_link_libraries(lms_login_benchmark PRIVATE lms_core)
+endif()
+
 include(CTest)
 if(BUILD_TESTING)
     find_package(GTest CONFIG REQUIRED)
