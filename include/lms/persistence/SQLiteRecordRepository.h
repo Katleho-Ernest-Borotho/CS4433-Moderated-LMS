@@ -47,6 +47,10 @@ public:
                        std::int64_t lecturerId, std::string_view newDeadlineUtc) override;
     std::string findEffectiveDeadline(std::int64_t assignmentId,
                                       std::int64_t studentId) const override;
+    void saveClassExtension(std::int64_t assignmentId, std::int64_t lecturerId,
+                            std::string_view deadlineUtc,
+                            std::string_view changedAtUtc) override;
+    std::string findClassExtensionDeadline(std::int64_t assignmentId) const override;
     std::optional<SubmissionSummary> findFor(std::int64_t studentId,
                                               std::int64_t assignmentId) const override;
     SubmissionVersion saveVersion(std::int64_t studentId, std::int64_t assignmentId,
