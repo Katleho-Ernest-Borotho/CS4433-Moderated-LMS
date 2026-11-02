@@ -1323,3 +1323,174 @@ TEST_F(ModerationTests, FailedAuditInsertRollsBackHoDMarkAndApproval)
     const auto submission=users.findMarkableSubmission(version.submissionId);
     EXPECT_EQ(submission->state,"Marked");
 }
+
+
+// Batch: account rename, reactivation and password reset (FR-03 completion).
+class AccountRecoveryTests : public UserManagementTests {
+protected:
+    lms::Session adminSession()
+    {
+        return authentication.logIn("firstadmin","LongSecretPassword123!");
+    }
+    void createAccounts()
+    {
+        bootstrap.createInitialAdministrator("firstadmin","LongSecretPassword123!");
+        management.createUser(adminSession(),"student1","StudentPassword123!",lms::Role::Student);
+    }
+    std::int64_t studentId()
+    {
+        auto user=users.findByUsername("student1");
+        if(!user)throw std::runtime_error("Student fixture missing");
+        return user->id();
+    }
+};
+
+TEST_F(AccountRecoveryTests, AdministratorCanRenameAccountWithoutLosingRecords)
+{
+    createAccounts();
+    const auto id=studentId();
+    management.renameUser(adminSession(),id,"student.renamed");
+    EXPECT_FALSE(users.findByUsername("student1"));
+    const auto renamed=users.findByUsername("student.renamed");
+    ASSERT_NE(renamed,nullptr);
+    EXPECT_EQ(renamed->id(),id);
+    EXPECT_EQ(renamed->role(),lms::Role::Student);
+    EXPECT_TRUE(renamed->active());
+    EXPECT_EQ(authentication.logIn("student.renamed","StudentPassword123!").userId(),id);
+    EXPECT_THROW(authentication.logIn("student1","StudentPassword123!"),
+                 lms::AuthenticationError);
+}
+
+TEST_F(AccountRecoveryTests, RenamingExistingUserRejectsCaseInsensitiveCollision)
+{
+    createAccounts();
+    management.createUser(adminSession(),"secondstudent","AnotherSecret123!",lms::Role::Student);
+    EXPECT_THROW(management.renameUser(adminSession(),studentId(),"SECONDSTUDENT"),
+                 std::invalid_argument);
+    EXPECT_TRUE(users.findByUsername("student1"));
+    EXPECT_TRUE(users.findByUsername("secondstudent"));
+}
+
+TEST_F(AccountRecoveryTests, RenameRejectsMalformedUsernameAndPreservesOldOne)
+{
+    createAccounts();
+    EXPECT_THROW(management.renameUser(adminSession(),studentId(),"!"),
+                 std::invalid_argument);
+    EXPECT_THROW(management.renameUser(adminSession(),studentId(),"user with spaces"),
+                 std::invalid_argument);
+    EXPECT_TRUE(users.findByUsername("student1"));
+}
+
+TEST_F(AccountRecoveryTests, CannotRenameSignedInAdministrator)
+{
+    createAccounts();
+    EXPECT_THROW(management.renameUser(adminSession(),adminSession().userId(),"newadmin"),
+                 std::invalid_argument);
+    EXPECT_TRUE(users.findByUsername("firstadmin"));
+}
+
+TEST_F(AccountRecoveryTests, RenamingUserInvalidatesFormerSession)
+{
+    createAccounts();
+    auto old=authentication.logIn("student1","StudentPassword123!");
+    management.renameUser(adminSession(),studentId(),"student2");
+    EXPECT_THROW(authentication.requireRole(old,lms::Role::Student),
+                 lms::AuthenticationError);
+}
+
+TEST_F(AccountRecoveryTests, StudentCannotRenameAnotherAccount)
+{
+    createAccounts();
+    const auto student=authentication.logIn("student1","StudentPassword123!");
+    EXPECT_THROW(management.renameUser(student,student.userId(),"student2"),
+                 lms::AuthenticationError);
+}
+
+TEST_F(AccountRecoveryTests, AdministratorCanReactivatePreviouslyDeactivatedStudent)
+{
+    createAccounts();
+    const auto id=studentId();
+    management.deactivateUser(adminSession(),id);
+    EXPECT_THROW(authentication.logIn("student1","StudentPassword123!"),
+                 lms::AuthenticationError);
+    management.reactivateUser(adminSession(),id);
+    EXPECT_TRUE(users.findByUsername("student1")->active());
+    EXPECT_EQ(authentication.logIn("student1","StudentPassword123!").userId(),id);
+}
+
+TEST_F(AccountRecoveryTests, ReactivationOfActiveOrNonexistentAccountFails)
+{
+    createAccounts();
+    EXPECT_THROW(management.reactivateUser(adminSession(),studentId()),
+                 std::invalid_argument);
+    EXPECT_THROW(management.reactivateUser(adminSession(),999999),
+                 std::invalid_argument);
+}
+
+TEST_F(AccountRecoveryTests, StudentCannotReactivateAccounts)
+{
+    createAccounts();
+    const auto student=authentication.logIn("student1","StudentPassword123!");
+    EXPECT_THROW(management.reactivateUser(student,student.userId()),
+                 lms::AuthenticationError);
+}
+
+TEST_F(AccountRecoveryTests, AdministratorCanResetAnotherUsersPassword)
+{
+    createAccounts();
+    const auto id=studentId();
+    const auto old=authentication.logIn("student1","StudentPassword123!");
+    management.resetUserPassword(adminSession(),id,"FreshPassword456!");
+    EXPECT_THROW(authentication.logIn("student1","StudentPassword123!"),
+                 lms::AuthenticationError);
+    const auto updated=authentication.logIn("student1","FreshPassword456!");
+    EXPECT_EQ(updated.userId(),id);
+    EXPECT_THROW(authentication.requireRole(old,lms::Role::Student),
+                 lms::AuthenticationError);
+    const auto stored=users.findByUsername("student1");
+    EXPECT_NE(stored->passwordHash(),"FreshPassword456!");
+    EXPECT_TRUE(passwords.verify("FreshPassword456!",stored->passwordHash()));
+}
+
+TEST_F(AccountRecoveryTests, ResetKeepsUnrelatedCredentialsAndRolesIntact)
+{
+    createAccounts();
+    management.resetUserPassword(adminSession(),studentId(),"FreshPassword456!");
+    EXPECT_EQ(adminSession().role(),lms::Role::Administrator);
+    EXPECT_EQ(authentication.logIn("student1","FreshPassword456!").role(),
+              lms::Role::Student);
+}
+
+TEST_F(AccountRecoveryTests, RejectsShortAndOverlongPasswordResets)
+{
+    createAccounts();
+    EXPECT_THROW(management.resetUserPassword(adminSession(),studentId(),"short"),
+                 std::invalid_argument);
+    EXPECT_THROW(management.resetUserPassword(adminSession(),studentId(),
+                 std::string(1025,'x')),std::invalid_argument);
+    EXPECT_NO_THROW(authentication.logIn("student1","StudentPassword123!"));
+}
+
+TEST_F(AccountRecoveryTests, StudentCannotResetAnotherUsersPassword)
+{
+    createAccounts();
+    const auto student=authentication.logIn("student1","StudentPassword123!");
+    EXPECT_THROW(management.resetUserPassword(student,student.userId(),
+                 "FreshPassword456!"),lms::AuthenticationError);
+}
+
+TEST_F(AccountRecoveryTests, CannotResetCurrentlySignedInAdministratorInAdminUI)
+{
+    createAccounts();
+    EXPECT_THROW(management.resetUserPassword(adminSession(),adminSession().userId(),
+                 "FreshPassword456!"),std::invalid_argument);
+    EXPECT_NO_THROW(adminSession());
+}
+
+TEST_F(AccountRecoveryTests, ResetMissingAccountDoesNotCreateNewUser)
+{
+    createAccounts();
+    EXPECT_THROW(management.resetUserPassword(adminSession(),999999,
+                 "FreshPassword456!"),std::invalid_argument);
+    EXPECT_EQ(management.listUsers(adminSession()).size(),2U);
+}
