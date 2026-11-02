@@ -21,8 +21,8 @@ bash scripts/package_windows_ucrt64.sh
 | Qt Windows platform plugin | `platforms/qwindows.dll` included | PASS |
 | External runtime libraries | Includes GCC runtime, `libsqlite3-0.dll`, `libsodium-26.dll`, and transitive DLLs | PASS |
 | Output location | `ModeratedLMS_v1_1_20261102_023504` | CREATED |
-| Independent Windows launch | Not shown by this output | PENDING |
-| Upgraded 13-table backup/restore on target | Not shown by this output | PENDING |
+| Independent Windows launch and requested CR1 checks | Developer subsequently reported all requested checks worked on second laptop | **USER-REPORTED PASS** |
+| Verified backup on target | Developer subsequently reported the requested backup verification worked | **USER-REPORTED PASS** |
 
 Generated folder:
 
@@ -52,13 +52,20 @@ GitHub Actions for commit
 
 https://github.com/Katleho-Ernest-Borotho/CS4433-Moderated-LMS/actions/runs/41378333994
 
-**Build provenance remains to be checked from the actual package.**
-The pasted log does not show the contents of
-`ModeratedLMS_v1_1_20261102_023504/BUILD_PROVENANCE.txt`, and the
-order of package creation versus Git update is not independently
-established by this record. Do not assume the packaged executable came
-from the same revision as the latest fetched branch without inspecting
-that file.
+**Build provenance confirmed** from the developer's subsequent `cat` output:
+
+```text
+Release: v1.1 CR1 / whole-class deadline extensions
+Packaged (UTC): 2026-11-02T02:35:35Z
+Git commit: adbd8e194fc0856e9e478880d385a1b1c14d0a5e
+Build: Windows MSYS2 UCRT64 / CMake Release
+Database migration: class_deadline_extensions added on first start
+Notes: Not an installer; second laptop acceptance required
+```
+
+This commits the release package to an immutable, independently successful
+Windows CI build revision. The later documentation-only commits do not
+change the executable source included in this package.
 
 ## 4. Next acceptance procedure
 
@@ -75,6 +82,26 @@ that file.
    screenshots, and complete `CR1_RELEASE_BUILD_AND_ACCEPTANCE.md`.
 6. Archive package provenance, test evidence and any defect/retest results.
 
-**Conclusion:** The v1.1 Windows Release folder was constructed successfully
-on the development machine. It remains a **deployment candidate** until
-the new version has been tested on the independent laptop.
+## 5. Subsequent independent laptop verification
+
+After transferring the packaged v1.1 folder to the second Windows laptop,
+the developer replied **"and evrything worked"** following the requested
+verification of: offline application launch, Lecturer whole-class extension,
+two enrolled Students seeing the new Class due date, preservation of a
+longer individual due date, application restart persistence, and
+Administrator backup verification.
+
+Record those requested steps as **developer-reported PASS**, not as
+independently witnessed screenshot evidence. The developer supplied terminal
+proof of successful packaging and source provenance; second-laptop UI
+screenshots for this specific v1.1 package were not supplied in this turn.
+
+The response does not separately document a **restore operation**, an
+existing-v1.0-database migration on that second laptop, keyboard-only
+accessibility, licence review, or supervisor approval. Those remain
+individual release/handover checks rather than inferred passes.
+
+**Conclusion:** v1.1 packaging and the requested independent deployment
+scenarios have **passed as reported by the developer**. Formal handover,
+remaining separately unverified checks, and supervisor acceptance are
+still pending.
