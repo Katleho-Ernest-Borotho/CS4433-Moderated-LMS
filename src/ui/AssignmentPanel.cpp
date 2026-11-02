@@ -86,9 +86,9 @@ AssignmentPanel::AssignmentPanel(IAcademicManagementService& academic,
     layout->addWidget(timeNote);
 
     assignments_=new QTableWidget(this);
-    assignments_->setColumnCount(4);
+    assignments_->setColumnCount(5);
     assignments_->setHorizontalHeaderLabels(
-        {"Assignment","Original due (local)","Your due (local)","Maximum mark"});
+        {"Assignment","Original due (local)","Class due (local)","Your due (local)","Maximum mark"});
     assignments_->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
     assignments_->verticalHeader()->setVisible(false);
     assignments_->setSelectionBehavior(QAbstractItemView::SelectRows);
@@ -129,6 +129,25 @@ AssignmentPanel::AssignmentPanel(IAcademicManagementService& academic,
     extensionLayout->addRow("New deadline (local time):",extensionDeadline_);
     extensionLayout->addRow(grantButton);
     layout->addWidget(extensionGroup_);
+    classExtensionGroup_=new QGroupBox("Whole-class deadline extension (Lecturer)",this);
+    auto* classForm=new QFormLayout(classExtensionGroup_);
+    classExtensionAssignments_=new QComboBox(classExtensionGroup_);
+    classExtensionDeadline_=new QDateTimeEdit(
+        QDateTime::currentDateTime().addDays(14),classExtensionGroup_);
+    classExtensionDeadline_->setCalendarPopup(true);
+    classExtensionDeadline_->setDisplayFormat("dd MMM yyyy, HH:mm");
+    auto* classInfo=new QLabel(
+        "Extends the deadline for every enrolled student. Any longer individual "
+        "extension is preserved. Class extensions are locked once marking starts.",
+        classExtensionGroup_);
+    classInfo->setWordWrap(true);
+    auto* classButton=new QPushButton("Grant whole-class extension",classExtensionGroup_);
+    classForm->addRow("Assignment:",classExtensionAssignments_);
+    classForm->addRow("New class deadline (local):",classExtensionDeadline_);
+    classForm->addRow(classInfo);
+    classForm->addRow(classButton);
+    layout->addWidget(classExtensionGroup_);
+
 
     studentSubmissionGroup_=new QGroupBox("Submit assignment (Student)",this);
     auto* submissionLayout=new QVBoxLayout(studentSubmissionGroup_);
@@ -190,6 +209,7 @@ AssignmentPanel::AssignmentPanel(IAcademicManagementService& academic,
             [this](int){refreshEffectiveDeadline();});
     connect(createButton,&QPushButton::clicked,this,[this]{createAssignment();});
     connect(grantButton,&QPushButton::clicked,this,[this]{grantExtension();});
+    connect(classButton,&QPushButton::clicked,this,[this]{grantClassExtension();});
     connect(refreshButton,&QPushButton::clicked,this,[this]{refresh();});
     connect(submissionAssignments_,&QComboBox::currentIndexChanged,this,
             [this](int){refreshHistory();});
@@ -202,6 +222,7 @@ AssignmentPanel::AssignmentPanel(IAcademicManagementService& academic,
 
     creationGroup_->hide();
     extensionGroup_->hide();
+    classExtensionGroup_->hide();
     studentSubmissionGroup_->hide();
 }
 
@@ -225,6 +246,7 @@ void AssignmentPanel::refresh()
             throw AuthenticationError("Assignments are not available for this role");
         creationGroup_->setVisible(lecturer);
         extensionGroup_->setVisible(lecturer);
+        classExtensionGroup_->setVisible(lecturer);
         studentSubmissionGroup_->setVisible(!lecturer);
         // Discard unsent UI state whenever a new account logs in.
         submissionText_->clear();
@@ -257,6 +279,10 @@ void AssignmentPanel::loadCourse()
         extensionAssignments_->clear();
     }
     {
+        const QSignalBlocker block(classExtensionAssignments_);
+        classExtensionAssignments_->clear();
+    }
+    {
         const QSignalBlocker block(enrolledStudents_);
         enrolledStudents_->clear();
     }
@@ -278,11 +304,13 @@ void AssignmentPanel::loadCourse()
             const QSignalBlocker block(extensionAssignments_);
             for(int i=0;i<static_cast<int>(records.size());++i) {
                 const auto& a=records[static_cast<std::size_t>(i)];
+                const auto classDeadline=submissions_.classExtensionDeadline(actor(),a.id);
+                const QString classDue=classDeadline.empty()?"No class extension":
+                    asReadableLocalTime(classDeadline);
                 QString effective="-";
-                if(!lecturer) {
+                if(!lecturer)
                     effective=asReadableLocalTime(
                         submissions_.effectiveDeadline(actor(),a.id,actor().userId()));
-                }
                 assignments_->setItem(i,0,new QTableWidgetItem(QString::fromStdString(a.title)));
                 auto* originalTime = new QTableWidgetItem(asReadableLocalTime(a.deadlineUtc));
                 originalTime->setToolTip(QString::fromStdString(a.deadlineUtc) + " UTC (exact)");
@@ -290,11 +318,15 @@ void AssignmentPanel::loadCourse()
                 auto* effectiveTime = new QTableWidgetItem(effective);
                 if (!lecturer) effectiveTime->setToolTip(QString::fromStdString(
                     submissions_.effectiveDeadline(actor(),a.id,actor().userId())) + " UTC (exact)");
-                assignments_->setItem(i,2,effectiveTime);
-                assignments_->setItem(i,3,new QTableWidgetItem(QString::number(a.maximumMark,'f',2)));
-                if(lecturer)
+                auto* classTime=new QTableWidgetItem(classDue);
+                if(!classDeadline.empty())classTime->setToolTip(QString::fromStdString(classDeadline)+" UTC (exact)");
+                assignments_->setItem(i,2,classTime);
+                assignments_->setItem(i,3,effectiveTime);
+                assignments_->setItem(i,4,new QTableWidgetItem(QString::number(a.maximumMark,'f',2)));
+                if(lecturer) {
                     addChoice(extensionAssignments_,QString::fromStdString(a.title),a.id);
-                else
+                    addChoice(classExtensionAssignments_,QString::fromStdString(a.title),a.id);
+                } else
                     addChoice(submissionAssignments_,QString::fromStdString(a.title),a.id);
             }
         }
@@ -337,6 +369,23 @@ void AssignmentPanel::createAssignment()
         assignmentTitle_->clear();
         loadCourse();
         QMessageBox::information(this,"Assignment created","The assignment has been saved.");
+    } catch(const std::exception& error) {
+        showError(error);
+    }
+}
+
+void AssignmentPanel::grantClassExtension()
+{
+    try {
+        const auto assignment=selection(classExtensionAssignments_);
+        if(QMessageBox::question(this,"Confirm whole-class extension",
+            "Extend this assignment for ALL enrolled students? Existing longer "
+            "individual deadlines will remain effective.")!=QMessageBox::Yes)return;
+        submissions_.grantClassExtension(actor(),assignment,
+            asUtc(classExtensionDeadline_->dateTime()).toStdString());
+        loadCourse();
+        QMessageBox::information(this,"Class deadline extended",
+            "The new class deadline is now visible in the student assignment list.");
     } catch(const std::exception& error) {
         showError(error);
     }
