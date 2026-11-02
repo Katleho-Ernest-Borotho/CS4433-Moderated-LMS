@@ -2,9 +2,7 @@
 
 **Branch:** `feature/phase8-cr1-class-extensions`
 
-The v1.1 implementation is still under verification. It contains **128
-GoogleTest cases**, including **13 CR1 regression cases**, in the current
-source. Do not describe them as passed until CTest/CI reports success.
+The v1.1 source contains **128 GoogleTest cases**, including **13 CR1 regression cases**. All **128/128 passed** in the developer's MSYS2 UCRT64 run (53.26 seconds), and the Windows CI run for the tested checkpoint was successful. These results are documented in **CR1_TEST_EVIDENCE_2026-11-02.md**. GUI and migration acceptance on the working database are still pending.
 
 ## A. Protect your v1.0 data first
 
@@ -37,7 +35,7 @@ cmake --build /c/dev/cs4433-lms-v11
 ctest --test-dir /c/dev/cs4433-lms-v11 --output-on-failure
 ```
 
-Target: **128 tests passed, 0 failed**.
+Verified local result: **128 tests passed, 0 failed**. The commands above can be rerun to confirm a new source revision.
 
 Only once the tests pass, close any old LMS instance and launch the v1.1
 application:
