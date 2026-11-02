@@ -2003,3 +2003,20 @@ TEST(DatabaseTests, MigratesV10DatabaseWithoutLosingAccountsOrRepeatingChanges)
         throw;
     }
 }
+
+TEST_F(ModerationTests, ClassExtensionBlocksPrematureHoDModeration)
+{
+    initialise();
+    makeDepartmentHod();
+    const auto a=makeAssignment("2000-01-01T00:00:00Z");
+    const auto student=studentSession();
+    submissions.grantClassExtension(lecturer(),a.id,"2030-11-01T12:00:00Z");
+    const auto version=submissionService.submit(student,a.id,{"Extension protected",""});
+    marking.mark(lecturer(),version.submissionId,75,"Pre-deadline marking","");
+    const auto pending=moderation.listDepartmentResults(hod());
+    ASSERT_EQ(pending.size(),1U);
+    EXPECT_EQ(pending.front().effectiveDeadlineUtc,"2030-11-01T12:00:00Z");
+    EXPECT_THROW(moderation.moderate(hod(),version.submissionId,std::nullopt,""),
+                 std::invalid_argument);
+    EXPECT_TRUE(moderation.getReleasedResults(student).empty());
+}
