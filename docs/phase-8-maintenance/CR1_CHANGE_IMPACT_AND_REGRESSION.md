@@ -13,7 +13,7 @@ deadline **for the whole class**, without manually extending every enrolled
 Student. Existing individual deadline extensions remain valid.
 
 **Change status:** v1.1 development implementation is in branch
-`feature/phase8-cr1-class-extensions`. Requires compilation, 127-test
+`feature/phase8-cr1-class-extensions`. Requires compilation, 128-test
 regression run and manual acceptance before merging/tagging.
 
 ## 2. Updated functional requirements
@@ -143,7 +143,7 @@ complete. No actual tests are claimed in this change report.
 ## 6. Acceptance gate
 
 1. Build the new branch with MSYS2 UCRT64.
-2. Execute **127** GoogleTest cases and confirm **0 failed**.
+2. Execute **128** GoogleTest cases and confirm **0 failed**.
 3. Capture full Lecturer and Student GUI screenshots of CR1 operation.
 4. Verify the individual extension and penalty tests remain passing.
 5. Verify the migrated real test database retains existing data and
