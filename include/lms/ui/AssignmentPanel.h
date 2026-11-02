@@ -35,6 +35,7 @@ private:
     void loadCourse();
     void createAssignment();
     void grantExtension();
+    void grantClassExtension();
     void refreshEffectiveDeadline();
     void showError(const std::exception& error);
     void chooseFile();
@@ -50,10 +51,13 @@ private:
     QTableWidget* assignments_ = nullptr;
     QGroupBox* creationGroup_ = nullptr;
     QGroupBox* extensionGroup_ = nullptr;
+    QGroupBox* classExtensionGroup_ = nullptr;
     QLineEdit* assignmentTitle_ = nullptr;
     QDateTimeEdit* assignmentDeadline_ = nullptr;
     QDoubleSpinBox* maximumMark_ = nullptr;
     QComboBox* extensionAssignments_ = nullptr;
+    QComboBox* classExtensionAssignments_ = nullptr;
+    QDateTimeEdit* classExtensionDeadline_ = nullptr;
     QComboBox* enrolledStudents_ = nullptr;
     QDateTimeEdit* extensionDeadline_ = nullptr;
     QLabel* currentDeadline_ = nullptr;
