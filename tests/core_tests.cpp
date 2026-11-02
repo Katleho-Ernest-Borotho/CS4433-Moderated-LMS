@@ -1715,3 +1715,86 @@ TEST_F(BackupTests, MissingReferencedAttachmentCannotBeBackedUp)
     }
     EXPECT_TRUE(std::filesystem::exists(dbFile));
 }
+
+
+// Full integration flow: same SQLite data passes through all four roles,
+// then appears in the authorised aggregate Administrator report.
+TEST_F(ModerationTests, EndToEndStudentLecturerHoDAdministratorWorkflow)
+{
+    initialise();
+    makeDepartmentHod();
+    const auto assignment=makeAssignment("2000-01-01T12:00:00Z");
+    const auto student=studentSession();
+    const auto version=submissionService.submit(student,assignment.id,
+        {"Integration test written answer",""});
+    ASSERT_EQ(version.versionNumber,1);
+    ASSERT_TRUE(version.late);
+    ASSERT_EQ(submissionService.listMyVersions(student,assignment.id).size(),1U);
+    EXPECT_TRUE(moderation.getReleasedResults(student).empty());
+
+    const auto submissions=marking.listSubmissions(lecturer(),assignment.id);
+    ASSERT_EQ(submissions.size(),1U);
+    EXPECT_EQ(submissions.front().latestVersionId,version.id);
+    const auto provisional=marking.mark(lecturer(),version.submissionId,
+        85.0,"Integration feedback","");
+    EXPECT_DOUBLE_EQ(provisional.earnedMark,85.0);
+    EXPECT_DOUBLE_EQ(provisional.finalMark,0.0); // first attempt >72h late
+    EXPECT_FALSE(provisional.approved);
+    EXPECT_TRUE(moderation.getReleasedResults(student).empty());
+
+    const auto pending=moderation.listDepartmentResults(hod());
+    ASSERT_EQ(pending.size(),1U);
+    EXPECT_EQ(pending.front().markedVersionId,version.id);
+    moderation.moderate(hod(),version.submissionId,std::nullopt,"");
+    EXPECT_TRUE(moderation.getReleasedResults(student).empty());
+    moderation.release(hod(),version.submissionId);
+
+    const auto released=moderation.getReleasedResults(student);
+    ASSERT_EQ(released.size(),1U);
+    EXPECT_DOUBLE_EQ(released.front().earnedMark,85.0);
+    EXPECT_DOUBLE_EQ(released.front().finalMark,0.0);
+    EXPECT_EQ(released.front().feedback,"Integration feedback");
+    EXPECT_FALSE(released.front().releasedAtUtc.empty());
+
+    const auto admin=authentication.logIn("admin1","LongSecretPassword123!");
+    const lms::AdminReportingService reports(authentication,database.connection());
+    const auto summary=reports.generate(admin);
+    EXPECT_EQ(summary.assignments,1);
+    EXPECT_EQ(summary.submissions,1);
+    EXPECT_EQ(summary.versions,1);
+    EXPECT_EQ(summary.provisional,0);
+    EXPECT_EQ(summary.approvedUnreleased,0);
+    EXPECT_EQ(summary.released,1);
+    EXPECT_EQ(summary.courseRows.front().releasedResults,1);
+}
+
+TEST_F(ModerationTests, EndToEndDepartmentPrivacyAndAuditOnAdjustedRelease)
+{
+    const auto version=markedPastDue();
+    const auto admin=authentication.logIn("admin1","LongSecretPassword123!");
+    const auto differentDepartment=management.createDepartment(admin,"Other Department");
+    const auto unrelated=management.createUser(admin,"otherhod","OtherPassword123!",
+                                                lms::Role::HeadOfDepartment);
+    management.assignHoD(admin,unrelated.id,differentDepartment.id);
+    const auto other=authentication.logIn("otherhod","OtherPassword123!");
+    ASSERT_TRUE(moderation.listDepartmentResults(other).empty());
+    EXPECT_THROW(moderation.moderate(other,version.submissionId,
+        std::optional<double>(80.0),"No permission"),lms::AuthenticationError);
+    EXPECT_TRUE(moderation.getReleasedResults(studentSession()).empty());
+
+    moderation.moderate(hod(),version.submissionId,
+        std::optional<double>(80.0),"Correction after reviewing work");
+    const auto result=users.findResult(version.submissionId);
+    ASSERT_TRUE(result.has_value());
+    ASSERT_TRUE(result->approved);
+    EXPECT_DOUBLE_EQ(result->finalMark,70.0);
+    const auto audits=users.listMarkAudits(result->resultId);
+    EXPECT_EQ(audits.size(),2U);
+    EXPECT_TRUE(moderation.getReleasedResults(studentSession()).empty());
+    moderation.release(hod(),version.submissionId);
+    const auto own=moderation.getReleasedResults(studentSession());
+    ASSERT_EQ(own.size(),1U);
+    EXPECT_DOUBLE_EQ(own.front().finalMark,70.0);
+    const auto stranger=authentication.logIn("student2","StudentPassword456!");
+    EXPECT_TRUE(moderation.getReleasedResults(stranger).empty());
+}
