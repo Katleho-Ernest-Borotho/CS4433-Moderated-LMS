@@ -87,6 +87,32 @@ Never report a hypothetical coverage percentage as a measured figure.
 The 70% target must be judged against the domain/application scope,
 not inflated by excluding hard-to-test business logic.
 
+## 5a. Reproducible 800-Student login benchmark (NFR-01)
+
+Build the separate benchmark on the target development/school computer in
+**MSYS2 UCRT64** (normal build, **not** coverage-instrumented):
+
+```bash
+cd /c/Users/borot/OneDrive/Desktop/CS4433-Moderated-LMS
+cmake -S . -B /c/dev/cs4433-lms-build -G Ninja -DCMAKE_BUILD_TYPE=Debug -DLMS_ENABLE_NFR_BENCHMARK=ON -DLMS_ENABLE_COVERAGE=OFF
+cmake --build /c/dev/cs4433-lms-build --target lms_login_benchmark
+cd /c/dev/cs4433-lms-build
+./lms_login_benchmark.exe lms_schema.sql
+```
+
+The benchmark creates a unique disposable SQLite database in the temporary
+directory, inserts **800 Student records**, and reports each of **20 actual
+timed valid logins** and how many took <=2,000 ms. It uses the production
+authentication/password-verification code path and does not touch the
+real LMS accounts. The disposable fixture copies one salted synthetic
+password hash to avoid expensive setup for 800 separate accounts; therefore
+this is a timing benchmark, **not** an NFR-03 audit of unique password salts.
+Use the real password-security tests and database inspection for NFR-03.
+
+Keep the console output as evidence alongside the computer specifications,
+timestamp and Git commit. A pass requires at least **19 out of 20** valid
+logins at or below 2 seconds on the target machine.
+
 ## 6. Execution evidence and Gate 3 decision
 
 Keep a dated test record with the Git commit SHA, test command, number of
