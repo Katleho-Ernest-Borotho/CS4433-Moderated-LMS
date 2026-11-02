@@ -46,10 +46,33 @@ For this offline Qt Widgets desktop application, these messages do not by themse
 | Qt deployment | PASS — processed two executables |
 | UCRT64 DLL collection | PASS — script completed |
 | Generated directory | PASS — path printed |
-| Independent launch on second Windows laptop | **NOT TESTED YET** |
-| Offline, first-run Administrator and persistence | **NOT TESTED YET** |
+| Second laptop GUI launch | **OBSERVED PASS** — Initial Administrator setup window visibly open in supplied photograph; toolchain independence still to verify |
+| First-run setup screen | **OBSERVED PASS** — Administrator setup form displayed |
+| First Administrator creation, offline workflow and restart persistence | **NOT TESTED YET** |
 | Windows-specific redistributable license review | **NOT COMPLETED** |
 
 This log validates package construction **on the development laptop**, not portability. Do not call v1.0 fully deployed until the second Windows laptop acceptance checklist is completed and signed off. A source commit SHA was not provided in the terminal log; capture `git rev-parse HEAD` for final artifact provenance.
 
-**Next:** Copy the complete timestamped folder to the second laptop, run `ModeratedLMS.exe` by double-clicking, and perform D-01 to D-12 from `WINDOWS_RELEASE_AND_SECOND_LAPTOP_TEST.md`.
+## Photograph-based second laptop launch evidence
+
+The developer supplied a photograph of the second Windows laptop after extracting
+`ModeratedLMS_v1_0_20261102_013723`. The photograph visibly shows:
+
+- The **Moderated Learning Management System** application open.
+- The **Initial administrator setup** form, including username and password fields.
+- File Explorer in the extracted deployment directory with `lms_schema.sql`,
+  two application executables, and several packaged DLLs.
+
+**Observed result:** The Windows GUI launches and reaches first-run setup.
+This supports D-01 (GUI-launch portion), D-02 (schema present), and D-03
+(initial-setup screen). It does **not** independently establish that MSYS2 or
+other developer runtimes are absent, that the computer is offline, that a first
+Administrator can be created, or that records persist after restart.
+
+The photograph is held in the project conversation; it has not been
+committed to the repository because the image also shows unrelated desktop
+information. If needed, save a tightly cropped evidence copy separately.
+
+**Next:** Complete setup using synthetic credentials, verify all four roles,
+restart persistence and offline operation, and then record the outcomes in
+`WINDOWS_RELEASE_AND_SECOND_LAPTOP_TEST.md`.
