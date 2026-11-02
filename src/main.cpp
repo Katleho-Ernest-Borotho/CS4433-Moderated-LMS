@@ -36,7 +36,6 @@ int main(int argc, char* argv[])
         }
 
         QLockFile applicationLock(dataDirectory + "/lms.lock");
-        applicationLock.setStaleLockTime(0);
         if (!applicationLock.tryLock(0))
             throw std::runtime_error("The LMS is already running or maintenance is active");
         lms::SqliteDatabase database((dataDirectory + "/lms.sqlite3").toStdString());
