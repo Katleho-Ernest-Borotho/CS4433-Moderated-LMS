@@ -137,6 +137,18 @@ BackupInfo BackupManager::create(sqlite3* db,const fs::path& data,
     directory(data);
     fs::create_directories(destination);
     directory(destination);
+    // Never store backups inside the live application-data tree.
+    {
+        auto child=fs::weakly_canonical(destination);
+        auto base=fs::weakly_canonical(data);
+        auto i=child.begin();
+        bool inside=true;
+        for(auto parent=base.begin();parent!=base.end();++parent,++i) {
+            if(i==child.end()||*i!=*parent){inside=false;break;}
+        }
+        if(inside)throw std::invalid_argument(
+            "Choose a backup destination outside LMS application data");
+    }
     auto name="ModeratedLMS_Backup_"+
         std::to_string(std::chrono::system_clock::to_time_t(
             std::chrono::system_clock::now()))+"_"+nonce();
