@@ -67,6 +67,7 @@ jobs:
             mingw-w64-ucrt-x86_64-sqlite3
             mingw-w64-ucrt-x86_64-libsodium
             mingw-w64-ucrt-x86_64-gtest
+            git
             zip
 
       - name: Confirm source commit
