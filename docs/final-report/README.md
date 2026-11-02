@@ -6,6 +6,16 @@
 
 **Working report:** `CS4433_Final_Project_Report_202322762_DRAFT.pdf` has been generated in the conversation as a 21-page editable review deliverable (approximately 6,900 words before references and appendices). It is intentionally **not yet claimed as the signed final report**. Save the PDF in this folder if the university requests the report within the repository too; the GitHub connector cannot automatically fetch files from the developer's ChatGPT downloads.
 
+
+## Accepted expanded draft and final evidence audit (2 November 2026)
+
+The user has selected `CS4433_Final_Report_Expanded_Draft_202322762.docx` as the base document to retain for the final report. It is held as a conversation deliverable (not yet uploaded into this folder). Its prose must not be silently rewritten; remaining appendix work should use the following grounded records:
+
+- [Final evidence and acceptance gap register](FINAL_EVIDENCE_AUDIT_2026-11-02.md)
+- [Updated risk review, preserving the original 11 risk scores](UPDATED_RISK_REGISTER_2026-11-02.md)
+
+**Release status correction:** GitHub now has **v1.0** and **v1.1 pre-releases**, each with a Windows ZIP and SHA-256 file. These are not signed/production-approved releases; formal acceptance remains pending.
+
 ## Final report sections
 
 The master report follows the assignment's required order:
