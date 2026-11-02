@@ -55,12 +55,28 @@ exact v1.1 line coverage percentage has not been extracted from its report,
 so the earlier v1.0 coverage measurement should not be represented as v1.1
 coverage without an updated measurement.
 
-## Acceptance still outstanding
+## v1.1 GUI acceptance — developer reported PASS
 
-Automated passing tests are not evidence that the new v1.1 GUI control
-is understandable or that the lecturer/student views work after upgrading
-an existing deployment. Next retain the **verified full v1.0 backup** and
-perform the manual GUI scenarios in
+After the successful 128-test run, the developer was instructed to run v1.1
+on the existing development machine and inspect the new Lecturer whole-class
+extension controls and Student class/personal due date columns. The developer
+responded **"it works"** on 2 November 2026.
+
+**Observed evidence level:** developer-reported functional GUI acceptance.
+This supports that the CR1 change was operable in the GUI. The response did
+not include separate screenshots or individual results for every negative
+scenario. The negative and boundary behaviours remain supported by the
+automated regression suite. Record screenshots before final release handover.
+
+**Important distinction:** v1.1 packaging and launch on the independent
+second Windows laptop have not yet been tested. That is a separate deployment
+gate from this development-machine GUI confirmation.
+
+## Acceptance items and handover still outstanding
+
+The developer reported the GUI works after the instructed check. For
+complete handover evidence, retain a **verified v1.0 backup** and archive
+individually dated screenshots/results for the scenarios in
 `CR1_BUILD_AND_GUI_VERIFICATION.md`:
 
 - Lecturer grants a whole-class extension and sees the displayed new date.
@@ -72,6 +88,7 @@ perform the manual GUI scenarios in
 - Existing users, courses, results and submission versions remain intact.
 - Backup/restore with a v1.1 (13-table) database is confirmed.
 
-**CR1 state:** Automated integration/regression **PASS**. Manual GUI and
-post-migration acceptance **pending**. Do not merge/tag a released v1.1
-solely from the automated pass.
+**CR1 state:** Automated integration/regression **PASS**; developer-reported
+GUI acceptance **PASS**. Independent v1.1 deployment and release acceptance
+remain **PENDING**. Do not mark the second-laptop deployment as passed
+before testing this actual version.
