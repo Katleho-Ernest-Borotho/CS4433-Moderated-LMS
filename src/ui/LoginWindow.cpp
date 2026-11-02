@@ -29,6 +29,7 @@
 #include <cstddef>
 #include <exception>
 #include <string>
+#include <utility>
 
 namespace lms {
 namespace {
