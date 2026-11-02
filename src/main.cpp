@@ -4,6 +4,7 @@
 #include "lms/application/SubmissionManagementService.h"
 #include "lms/application/MarkingService.h"
 #include "lms/application/ModerationService.h"
+#include "lms/application/AdminReportingService.h"
 #include "lms/domain/LatePenaltyPolicy.h"
 #include "lms/persistence/SQLiteRecordRepository.h"
 #include "lms/persistence/LocalSubmissionContentStore.h"
@@ -15,6 +16,7 @@
 #include <QCoreApplication>
 #include <QDir>
 #include <QMessageBox>
+#include <QLockFile>
 #include <QStandardPaths>
 
 #include <exception>
@@ -33,6 +35,10 @@ int main(int argc, char* argv[])
             throw std::runtime_error("Cannot create the application data folder");
         }
 
+        QLockFile applicationLock(dataDirectory + "/lms.lock");
+        applicationLock.setStaleLockTime(0);
+        if (!applicationLock.tryLock(0))
+            throw std::runtime_error("The LMS is already running or maintenance is active");
         lms::SqliteDatabase database((dataDirectory + "/lms.sqlite3").toStdString());
         const QString schemaFile = QCoreApplication::applicationDirPath() + "/lms_schema.sql";
         database.initializeSchemaFromFile(schemaFile.toStdString());
@@ -48,7 +54,10 @@ int main(int argc, char* argv[])
         lms::CommencedDayPenaltyPolicy penaltyPolicy;
         lms::MarkingService marking(authentication, users, users, penaltyPolicy, files);
         lms::ModerationService moderation(authentication, users, penaltyPolicy, files);
-        lms::LoginWindow window(authentication, bootstrap, academic, submissions, marking, moderation);
+        lms::AdminReportingService reporting(authentication, database.connection());
+        lms::LoginWindow window(authentication, bootstrap, academic, submissions,
+                                marking, moderation, reporting,
+                                database.connection(), dataDirectory);
         window.show();
         return application.exec();
     } catch (const std::exception& error) {
