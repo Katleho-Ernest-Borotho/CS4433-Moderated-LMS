@@ -86,10 +86,14 @@ Moderated LMS v1.1 — Windows CR1 test deployment
 
 1. Copy/extract this COMPLETE folder to a Windows laptop.
 2. Run ModeratedLMS.exe. If no accounts exist, set up the first Administrator.
-3. The app stores its own private database under Windows Local AppData.\n   On first launch with an existing v1.0 database, it adds the class-extension\n   table automatically. Make a verified v1.0 backup BEFORE launching v1.1.
+3. The app stores its own private database under Windows Local AppData.
+   On first launch with an existing v1.0 database, it adds the class-extension
+   table automatically. Make a verified v1.0 backup BEFORE launching v1.1.
 4. lms_schema.sql must remain next to ModeratedLMS.exe.
 5. Do not use ModeratedLMSRestore.exe until after a verified backup.
-6. Test on a SECOND Windows laptop without relying on the developer\'s PATH.\n7. Lecturer: verify whole-class extension; Student: verify Class due and Your due.\n8. Existing longer individual extensions must remain effective.
+6. Test on a SECOND Windows laptop without relying on the developer's PATH.
+7. Lecturer: verify whole-class extension; Student: verify Class due and Your due.
+8. Existing longer individual extensions must remain effective.
 
 This is a deployment-test build, NOT a signed production installer.
 Review Qt, MSYS2 and other third-party redistribution licences before
