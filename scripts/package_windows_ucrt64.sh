@@ -17,10 +17,10 @@ done
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 SOURCE_DIR="$(cd -- "$SCRIPT_DIR/.." && pwd)"
-BUILD="/c/dev/cs4433-lms-release"
+BUILD="/c/dev/cs4433-lms-release-v11"
 ROOT="${1:-/c/dev/cs4433-lms-packages}"
 STAMP="$(date -u '+%Y%m%d_%H%M%S')"
-DIST="$ROOT/ModeratedLMS_v1_0_$STAMP"
+DIST="$ROOT/ModeratedLMS_v1_1_$STAMP"
 
 mkdir -p "$ROOT"
 if [[ -e "$DIST" ]]; then
@@ -41,6 +41,8 @@ mkdir -p "$DIST"
 cp "$BUILD/ModeratedLMS.exe" "$DIST/"
 cp "$BUILD/ModeratedLMSRestore.exe" "$DIST/"
 cp "$BUILD/lms_schema.sql" "$DIST/"
+mkdir -p "$DIST/migration-reference"
+cp "$SOURCE_DIR/schema/migrations/001_class_deadline_extensions.sql" "$DIST/migration-reference/"
 
 echo "Deploying Qt 6 DLLs and platform plugins..."
 windeployqt6 --release --dir "$DIST" "$DIST/ModeratedLMS.exe"
@@ -80,19 +82,28 @@ if ! find "$DIST" -type f -iname 'qwindows.dll' -print -quit | grep -q .; then
 fi
 
 cat > "$DIST/README_FIRST_RUN.txt" <<'README'
-Moderated LMS v1.0 — Windows test deployment
+Moderated LMS v1.1 — Windows CR1 test deployment
 
 1. Copy/extract this COMPLETE folder to a Windows laptop.
 2. Run ModeratedLMS.exe. If no accounts exist, set up the first Administrator.
-3. The app stores its own private database under Windows Local AppData.
+3. The app stores its own private database under Windows Local AppData.\n   On first launch with an existing v1.0 database, it adds the class-extension\n   table automatically. Make a verified v1.0 backup BEFORE launching v1.1.
 4. lms_schema.sql must remain next to ModeratedLMS.exe.
 5. Do not use ModeratedLMSRestore.exe until after a verified backup.
-6. Test on a SECOND Windows laptop without relying on the developer's PATH.
+6. Test on a SECOND Windows laptop without relying on the developer\'s PATH.\n7. Lecturer: verify whole-class extension; Student: verify Class due and Your due.\n8. Existing longer individual extensions must remain effective.
 
 This is a deployment-test build, NOT a signed production installer.
 Review Qt, MSYS2 and other third-party redistribution licences before
 distribution; retain necessary licence notices. Do not include live data.
 README
+
+cat > "$DIST/BUILD_PROVENANCE.txt" <<EOF
+Release: v1.1 CR1 / whole-class deadline extensions
+Packaged (UTC): $(date -u '+%Y-%m-%dT%H:%M:%SZ')
+Git commit: $(git -C "$SOURCE_DIR" rev-parse HEAD 2>/dev/null || echo unknown)
+Build: Windows MSYS2 UCRT64 / CMake Release
+Database migration: class_deadline_extensions added on first start
+Notes: Not an installer; second laptop acceptance required
+EOF
 
 echo
 echo "Prepared deployment folder: $(cygpath -w "$DIST")"
