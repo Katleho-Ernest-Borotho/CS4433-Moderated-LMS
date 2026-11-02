@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:ev="http://www.w3.org/2001/xml-events" xmlns:xlink="http://www.w3.org/1999/xlink" baseProfile="full" height="1450px" version="1.1" viewBox="0 0 1810 1450" width="1810px">
+  <defs>
+    <marker id="arrow" markerHeight="10" markerUnits="strokeWidth" markerWidth="13" orient="auto" refX="11" refY="5">
+      <path d="M0,0 L12,5 L0,10 Z" fill="#292929"/>
+    </marker>
+  </defs>
+  <rect fill="white" height="1450" width="1810" x="0" y="0"/>
+  <rect fill="none" height="1426" rx="4" stroke="#585858" stroke-width="3" width="1786" x="12" y="12"/>
+  <text fill="#292929" font-family="DejaVu Sans" font-size="26" font-weight="bold" x="30" y="48">act  Assignment result lifecycle — part 1 of 2: submission</text>
+  <line stroke="#585858" stroke-width="2" x1="12" x2="1798" y1="66" y2="66"/>
+  <line stroke="#585858" stroke-width="3" x1="530" x2="530" y1="66" y2="1435"/>
+  <text fill="#292929" font-family="DejaVu Sans" font-size="26" font-weight="bold" text-anchor="middle" x="265" y="110">Student</text>
+  <text fill="#292929" font-family="DejaVu Sans" font-size="26" font-weight="bold" text-anchor="middle" x="1170" y="110">LMS</text>
+  <circle cx="260" cy="150" fill="black" r="13"/>
+  <path d="M260,164 L260,195" fill="none" marker-end="url(#arrow)" stroke="#292929" stroke-width="2.5"/>
+  <rect fill="#ffffff" height="68" rx="14" stroke="#292929" stroke-width="2.5" width="390" x="65.0" y="195.0"/>
+  <text fill="#292929" font-family="DejaVu Sans" font-size="22" font-weight="normal" text-anchor="middle" x="260" y="222.73">Open enrolled course</text>
+  <text fill="#292929" font-family="DejaVu Sans" font-size="22" font-weight="normal" text-anchor="middle" x="260" y="249.79">and assignment</text>
+  <path d="M260,264 L260,306" fill="none" marker-end="url(#arrow)" stroke="#292929" stroke-width="2.5"/>
+  <rect fill="#ffffff" height="70" rx="14" stroke="#292929" stroke-width="2.5" width="390" x="65.0" y="312.0"/>
+  <text fill="#292929" font-family="DejaVu Sans" font-size="22" font-weight="normal" text-anchor="middle" x="260" y="340.73">Enter typed text</text>
+  <text fill="#292929" font-family="DejaVu Sans" font-size="22" font-weight="normal" text-anchor="middle" x="260" y="367.79">and/or attach a file</text>
+  <path d="M260,382 L260,420" fill="none" marker-end="url(#arrow)" stroke="#292929" stroke-width="2.5"/>
+  <rect fill="#ffffff" height="62" rx="14" stroke="#292929" stroke-width="2.5" width="275" x="122.5" y="425.0"/>
+  <text fill="#292929" font-family="DejaVu Sans" font-size="22" font-weight="normal" text-anchor="middle" x="260" y="463.26">Select Submit</text>
+  <path d="M398,456 L660,456" fill="none" marker-end="url(#arrow)" stroke="#292929" stroke-width="2.5"/>
+  <rect fill="#ffffff" height="72" rx="14" stroke="#292929" stroke-width="2.5" width="353" x="660.5" y="420.0"/>
+  <text fill="#292929" font-family="DejaVu Sans" font-size="22" font-weight="normal" text-anchor="middle" x="837" y="449.73">Check role, enrolment</text>
+  <text fill="#292929" font-family="DejaVu Sans" font-size="22" font-weight="normal" text-anchor="middle" x="837" y="476.79">and submission content</text>
+  <path d="M1014,456 L1084,456" fill="none" marker-end="url(#arrow)" stroke="#292929" stroke-width="2.5"/>
+  <path d="M1190,396.0 L1294.0,456 L1190,516.0 L1086.0,456 Z" fill="white" stroke="#292929" stroke-width="2.4"/>
+  <text fill="#292929" font-family="DejaVu Sans" font-size="18" font-weight="normal" text-anchor="middle" x="1190" y="450.87">Content and</text>
+  <text fill="#292929" font-family="DejaVu Sans" font-size="18" font-weight="normal" text-anchor="middle" x="1190" y="473.01">access valid?</text>
+  <path d="M1190,396 L1190,282 L470,282 L470,347 L455,347" fill="none" marker-end="url(#arrow)" stroke="#292929" stroke-width="2.5"/>
+  <text fill="#292929" font-family="DejaVu Sans" font-size="20" font-weight="normal" text-anchor="middle" x="850" y="266.6">[no] show error</text>
+  <path d="M1190,516 L1190,562" fill="none" marker-end="url(#arrow)" stroke="#292929" stroke-width="2.5"/>
+  <text fill="#292929" font-family="DejaVu Sans" font-size="18" font-weight="normal" text-anchor="middle" x="1235" y="537.94">[yes]</text>
+  <rect fill="#ffffff" height="76" rx="14" stroke="#292929" stroke-width="2.5" width="360" x="1010.0" y="572.0"/>
+  <text fill="#292929" font-family="DejaVu Sans" font-size="22" font-weight="normal" text-anchor="middle" x="1190" y="603.73">Find effective deadline</text>
+  <text fill="#292929" font-family="DejaVu Sans" font-size="22" font-weight="normal" text-anchor="middle" x="1190" y="630.79">(original or extension)</text>
+  <path d="M1190,649 L1190,704" fill="none" marker-end="url(#arrow)" stroke="#292929" stroke-width="2.5"/>
+  <path d="M1190,703.5 L1289.0,755 L1190,806.5 L1091.0,755 Z" fill="white" stroke="#292929" stroke-width="2.4"/>
+  <text fill="#292929" font-family="DejaVu Sans" font-size="18" font-weight="normal" text-anchor="middle" x="1190" y="749.87">Earlier</text>
+  <text fill="#292929" font-family="DejaVu Sans" font-size="18" font-weight="normal" text-anchor="middle" x="1190" y="772.01">submission?</text>
+  <path d="M1091,755 L902,755 L902,832" fill="none" marker-end="url(#arrow)" stroke="#292929" stroke-width="2.5"/>
+  <text fill="#292929" font-family="DejaVu Sans" font-size="18" font-weight="normal" text-anchor="middle" x="996" y="738.94">[no]</text>
+  <rect fill="#ffffff" height="76" rx="14" stroke="#292929" stroke-width="2.5" width="328" x="738.0" y="834.0"/>
+  <text fill="#292929" font-family="DejaVu Sans" font-size="22" font-weight="normal" text-anchor="middle" x="902" y="865.73">Save new Submission</text>
+  <text fill="#292929" font-family="DejaVu Sans" font-size="22" font-weight="normal" text-anchor="middle" x="902" y="892.79">and version 1</text>
+  <path d="M902,910 L902,950" fill="none" marker-end="url(#arrow)" stroke="#292929" stroke-width="2.5"/>
+  <path d="M902,947.5 L998.0,1000 L902,1052.5 L806.0,1000 Z" fill="white" stroke="#292929" stroke-width="2.4"/>
+  <text fill="#292929" font-family="DejaVu Sans" font-size="18" font-weight="normal" text-anchor="middle" x="902" y="994.87">After effective</text>
+  <text fill="#292929" font-family="DejaVu Sans" font-size="18" font-weight="normal" text-anchor="middle" x="902" y="1017.01">deadline?</text>
+  <path d="M804,1000 L743,1000 L743,1060" fill="none" marker-end="url(#arrow)" stroke="#292929" stroke-width="2.5"/>
+  <text fill="#292929" font-family="DejaVu Sans" font-size="18" font-weight="normal" text-anchor="middle" x="775" y="982.94">[yes]</text>
+  <path d="M1000,1000 L1062,1000 L1062,1060" fill="none" marker-end="url(#arrow)" stroke="#292929" stroke-width="2.5"/>
+  <text fill="#292929" font-family="DejaVu Sans" font-size="18" font-weight="normal" text-anchor="middle" x="1035" y="982.94">[no]</text>
+  <rect fill="#ffffff" height="66" rx="14" stroke="#292929" stroke-width="2.5" width="250" x="618.0" y="1066.0"/>
+  <text fill="#292929" font-family="DejaVu Sans" font-size="22" font-weight="normal" text-anchor="middle" x="743" y="1106.26">Store state Late</text>
+  <rect fill="#ffffff" height="66" rx="14" stroke="#292929" stroke-width="2.5" width="268" x="928.0" y="1066.0"/>
+  <text fill="#292929" font-family="DejaVu Sans" font-size="22" font-weight="normal" text-anchor="middle" x="1062" y="1106.26">Store state Submitted</text>
+  <path d="M743,1132 L743,1190 L1190,1190" fill="none" stroke="#292929" stroke-width="2.5"/>
+  <path d="M1062,1132 L1062,1190" fill="none" stroke="#292929" stroke-width="2.5"/>
+  <path d="M1289,755 L1495,755 L1495,813" fill="none" marker-end="url(#arrow)" stroke="#292929" stroke-width="2.5"/>
+  <text fill="#292929" font-family="DejaVu Sans" font-size="18" font-weight="normal" text-anchor="middle" x="1385" y="738.94">[yes]</text>
+  <path d="M1495,814.0 L1597.0,868 L1495,922.0 L1393.0,868 Z" fill="white" stroke="#292929" stroke-width="2.4"/>
+  <text fill="#292929" font-family="DejaVu Sans" font-size="18" font-weight="normal" text-anchor="middle" x="1495" y="862.87">Replacement</text>
+  <text fill="#292929" font-family="DejaVu Sans" font-size="18" font-weight="normal" text-anchor="middle" x="1495" y="885.01">on time?</text>
+  <path d="M1495,921 L1495,970" fill="none" marker-end="url(#arrow)" stroke="#292929" stroke-width="2.5"/>
+  <text fill="#292929" font-family="DejaVu Sans" font-size="18" font-weight="normal" text-anchor="middle" x="1538" y="947.94">[yes]</text>
+  <rect fill="#ffffff" height="83" rx="14" stroke="#292929" stroke-width="2.5" width="340" x="1325.0" y="976.5"/>
+  <text fill="#292929" font-family="DejaVu Sans" font-size="20" font-weight="normal" text-anchor="middle" x="1495" y="1000.0">Append new version; keep</text>
+  <text fill="#292929" font-family="DejaVu Sans" font-size="20" font-weight="normal" text-anchor="middle" x="1495" y="1024.6">previous versions; prior</text>
+  <text fill="#292929" font-family="DejaVu Sans" font-size="20" font-weight="normal" text-anchor="middle" x="1495" y="1049.1999999999998">mark becomes stale (D1)</text>
+  <path d="M1495,1060 L1495,1095 L1240,1095 L1240,1190 L1190,1190" fill="none" stroke="#292929" stroke-width="2.5"/>
+  <path d="M1597,868 L1712,868 L1712,1120" fill="none" marker-end="url(#arrow)" stroke="#292929" stroke-width="2.5"/>
+  <text fill="#292929" font-family="DejaVu Sans" font-size="18" font-weight="normal" text-anchor="middle" x="1660" y="840.94">[no]</text>
+  <rect fill="#ffffff" height="74" rx="14" stroke="#292929" stroke-width="2.5" width="310" x="1488.0" y="1123.0"/>
+  <text fill="#292929" font-family="DejaVu Sans" font-size="20" font-weight="normal" text-anchor="middle" x="1643" y="1154.3">Reject and notify student;</text>
+  <text fill="#292929" font-family="DejaVu Sans" font-size="20" font-weight="normal" text-anchor="middle" x="1643" y="1178.8999999999999">retain earlier versions</text>
+  <path d="M1643,1198 L1643,1263" fill="none" marker-end="url(#arrow)" stroke="#292929" stroke-width="2.5"/>
+  <circle cx="1643" cy="1281" fill="white" r="17" stroke="#292929" stroke-width="3"/>
+  <circle cx="1643" cy="1281" fill="#292929" r="11"/>
+  <circle cx="1190" cy="1190" fill="#292929" r="6"/>
+  <path d="M1190,1190 L560,1190 L560,1240 L460,1240" fill="none" marker-end="url(#arrow)" stroke="#292929" stroke-width="2.5"/>
+  <rect fill="#ffffff" height="74" rx="14" stroke="#292929" stroke-width="2.5" width="394" x="65.0" y="1203.0"/>
+  <text fill="#292929" font-family="DejaVu Sans" font-size="20" font-weight="normal" text-anchor="middle" x="262" y="1234.3">Read submission confirmation</text>
+  <text fill="#292929" font-family="DejaVu Sans" font-size="20" font-weight="normal" text-anchor="middle" x="262" y="1258.8999999999999">(accepted version and status)</text>
+  <path d="M262,1278 L262,1322" fill="none" marker-end="url(#arrow)" stroke="#292929" stroke-width="2.5"/>
+  <circle cx="262" cy="1350" fill="white" r="24" stroke="#292929" stroke-width="2.5"/>
+  <text fill="#292929" font-family="DejaVu Sans" font-size="20" font-weight="bold" text-anchor="middle" x="262" y="1356.6">A</text>
+  <rect fill="white" height="64" rx="8" stroke="#585858" stroke-width="1.5" width="585" x="340" y="1317"/>
+  <text fill="#292929" font-family="DejaVu Sans" font-size="20" font-weight="normal" text-anchor="middle" x="635" y="1342.3">Connector A continues to marking,</text>
+  <text fill="#292929" font-family="DejaVu Sans" font-size="20" font-weight="normal" text-anchor="middle" x="635" y="1366.8999999999999">moderation and release (part 2)</text>
+  <path d="M340,1350 L290,1350" fill="none" stroke="#292929" stroke-dasharray="6 5" stroke-width="1.7"/>
+  <rect fill="white" height="61" rx="5" stroke="#585858" stroke-width="1.3" width="405" x="1370" y="1343"/>
+  <text fill="#292929" font-family="DejaVu Sans" font-size="17" font-weight="normal" text-anchor="middle" x="1572" y="1368.155">Rejected replacement ends this attempt;</text>
+  <text fill="#292929" font-family="DejaVu Sans" font-size="17" font-weight="normal" text-anchor="middle" x="1572" y="1389.065">older accepted version remains valid.</text>
+</svg>
