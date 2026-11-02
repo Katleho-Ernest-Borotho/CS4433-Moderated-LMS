@@ -82,7 +82,7 @@ TEST(DatabaseTests, CreatesApprovedSchemaAndKeepsDataAfterReopen)
         "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%';",
         -1, &statement, nullptr), SQLITE_OK);
     ASSERT_EQ(sqlite3_step(statement), SQLITE_ROW);
-    EXPECT_EQ(sqlite3_column_int(statement, 0), 12);
+    EXPECT_EQ(sqlite3_column_int(statement, 0), 13);
     sqlite3_finalize(statement);
     ASSERT_EQ(sqlite3_exec(connection,
         "INSERT INTO users(username, password_hash, role) VALUES('test-user','dummy-hash','Student');",
@@ -1797,4 +1797,209 @@ TEST_F(ModerationTests, EndToEndDepartmentPrivacyAndAuditOnAdjustedRelease)
     EXPECT_DOUBLE_EQ(own.front().finalMark,70.0);
     const auto stranger=authentication.logIn("student2","StudentPassword456!");
     EXPECT_TRUE(moderation.getReleasedResults(stranger).empty());
+}
+
+
+// CR1: whole-class extension feature, migration, authorisation and regression.
+TEST_F(AssignmentAndExtensionTests, ClassExtensionChangesDueForAllEnrolledStudents)
+{
+    initialise();
+    const auto admin=authentication.logIn("admin1","LongSecretPassword123!");
+    const auto l=authentication.logIn("lecturer1","LecturerPassword123!");
+    const auto one=authentication.logIn("student1","StudentPassword123!");
+    const auto two=authentication.logIn("student2","StudentPassword456!");
+    management.enrolStudent(admin,two.userId(),courseId);
+    const auto a=management.createAssignment(l,courseId,"Lab",original,100);
+    submissions.grantClassExtension(l,a.id,extended);
+    EXPECT_EQ(submissions.effectiveDeadline(one,a.id,one.userId()),extended);
+    EXPECT_EQ(submissions.effectiveDeadline(two,a.id,two.userId()),extended);
+    EXPECT_EQ(submissions.classExtensionDeadline(one,a.id),extended);
+    EXPECT_EQ(submissions.classExtensionDeadline(two,a.id),extended);
+}
+
+TEST_F(AssignmentAndExtensionTests, LongerIndividualExtensionSurvivesClassExtension)
+{
+    initialise();
+    const auto l=authentication.logIn("lecturer1","LecturerPassword123!");
+    const auto student=authentication.logIn("student1","StudentPassword123!");
+    const auto a=management.createAssignment(l,courseId,"Lab",original,100);
+    submissions.grantExtension(l,a.id,student.userId(),"2030-11-10T12:00:00Z");
+    submissions.grantClassExtension(l,a.id,extended);
+    EXPECT_EQ(submissions.effectiveDeadline(student,a.id,student.userId()),
+              "2030-11-10T12:00:00Z");
+    EXPECT_EQ(submissions.classExtensionDeadline(student,a.id),extended);
+}
+
+TEST_F(AssignmentAndExtensionTests, ClassExtensionWinsOverShorterIndividualExtension)
+{
+    initialise();
+    const auto l=authentication.logIn("lecturer1","LecturerPassword123!");
+    const auto student=authentication.logIn("student1","StudentPassword123!");
+    const auto a=management.createAssignment(l,courseId,"Lab",original,100);
+    submissions.grantExtension(l,a.id,student.userId(),
+                               "2030-10-29T12:00:00Z");
+    submissions.grantClassExtension(l,a.id,extended);
+    EXPECT_EQ(submissions.effectiveDeadline(student,a.id,student.userId()),extended);
+    EXPECT_THROW(submissions.grantExtension(l,a.id,student.userId(),
+                 "2030-10-29T12:00:00Z"),std::invalid_argument);
+}
+
+TEST_F(AssignmentAndExtensionTests, ClassExtensionCanMoveFurtherButCannotShorten)
+{
+    initialise();
+    const auto l=authentication.logIn("lecturer1","LecturerPassword123!");
+    const auto a=management.createAssignment(l,courseId,"Lab",original,100);
+    submissions.grantClassExtension(l,a.id,extended);
+    EXPECT_THROW(submissions.grantClassExtension(l,a.id,original),std::invalid_argument);
+    EXPECT_THROW(submissions.grantClassExtension(l,a.id,extended),std::invalid_argument);
+    submissions.grantClassExtension(l,a.id,"2030-11-02T12:00:00Z");
+    EXPECT_EQ(submissions.classExtensionDeadline(l,a.id),"2030-11-02T12:00:00Z");
+}
+
+TEST_F(AssignmentAndExtensionTests, UnassignedLecturerAndStudentCannotExtendClass)
+{
+    initialise();
+    const auto l=authentication.logIn("lecturer1","LecturerPassword123!");
+    const auto outsider=authentication.logIn("lecturer2","LecturerPassword456!");
+    const auto student=authentication.logIn("student1","StudentPassword123!");
+    const auto a=management.createAssignment(l,courseId,"Lab",original,100);
+    EXPECT_THROW(submissions.grantClassExtension(outsider,a.id,extended),
+                 lms::AuthenticationError);
+    EXPECT_THROW(submissions.grantClassExtension(student,a.id,extended),
+                 lms::AuthenticationError);
+    EXPECT_TRUE(submissions.classExtensionDeadline(l,a.id).empty());
+}
+
+TEST_F(AssignmentAndExtensionTests, ClassExtensionOnlyAffectsSelectedAssignment)
+{
+    initialise();
+    const auto l=authentication.logIn("lecturer1","LecturerPassword123!");
+    const auto student=authentication.logIn("student1","StudentPassword123!");
+    const auto a=management.createAssignment(l,courseId,"Lab A",original,100);
+    const auto b=management.createAssignment(l,courseId,"Lab B",original,100);
+    submissions.grantClassExtension(l,a.id,extended);
+    EXPECT_EQ(submissions.effectiveDeadline(student,a.id,student.userId()),extended);
+    EXPECT_EQ(submissions.effectiveDeadline(student,b.id,student.userId()),original);
+}
+
+TEST_F(AssignmentAndExtensionTests, StudentsOnlySeeClassDeadlinesForEnrolledCourses)
+{
+    initialise();
+    const auto l=authentication.logIn("lecturer1","LecturerPassword123!");
+    const auto student=authentication.logIn("student1","StudentPassword123!");
+    const auto outsider=authentication.logIn("student2","StudentPassword456!");
+    const auto otherLecturer=authentication.logIn("lecturer2","LecturerPassword456!");
+    const auto a=management.createAssignment(l,courseId,"Lab",original,100);
+    submissions.grantClassExtension(l,a.id,extended);
+    EXPECT_EQ(submissions.classExtensionDeadline(student,a.id),extended);
+    EXPECT_THROW(submissions.classExtensionDeadline(outsider,a.id),
+                 lms::AuthenticationError);
+    EXPECT_THROW(submissions.classExtensionDeadline(otherLecturer,a.id),
+                 lms::AuthenticationError);
+}
+
+TEST_F(AssignmentAndExtensionTests, InvalidClassExtensionTimestampIsRejected)
+{
+    initialise();
+    const auto l=authentication.logIn("lecturer1","LecturerPassword123!");
+    const auto a=management.createAssignment(l,courseId,"Lab",original,100);
+    EXPECT_THROW(submissions.grantClassExtension(l,a.id,"2030-02-29T12:00:00Z"),
+                 std::invalid_argument);
+    EXPECT_TRUE(submissions.classExtensionDeadline(l,a.id).empty());
+}
+
+TEST_F(SubmissionTests, ClassExtensionReopensResubmissionForWholeClass)
+{
+    initialise();
+    const auto l=authentication.logIn("lecturer1","LecturerPassword123!");
+    const auto a=makeAssignment("2000-01-01T00:00:00Z");
+    const auto student=studentSession();
+    const auto first=submissionService.submit(student,a.id,{"First late submission",""});
+    EXPECT_TRUE(first.late);
+    submissions.grantClassExtension(l,a.id,"2030-11-01T12:00:00Z");
+    const auto second=submissionService.submit(student,a.id,{"Replacement after class change",""});
+    EXPECT_EQ(second.versionNumber,2);
+    EXPECT_FALSE(second.late);
+    EXPECT_EQ(submissionService.listMyVersions(student,a.id).size(),2U);
+}
+
+
+TEST_F(MarkingTests, ClassExtensionRecalculatesPenaltyForPreexistingSubmission)
+{
+    initialise();
+    const auto a=makeAssignment("2000-01-01T00:00:00Z");
+    const auto l=lecturer();
+    const auto student=studentSession();
+    const auto version=users.saveVersion(student.userId(),a.id,
+        "Submitted one minute after original due date","",
+        "2000-01-01T00:01:00Z");
+    submissions.grantClassExtension(l,a.id,"2000-01-01T00:02:00Z");
+    const auto result=marking.mark(l,version.submissionId,80,"Class extension applied","");
+    EXPECT_DOUBLE_EQ(result.penaltyMark,0);
+    EXPECT_DOUBLE_EQ(result.finalMark,80);
+}
+
+TEST_F(MarkingTests, CannotRetroactivelyExtendClassAfterMarking)
+{
+    initialise();
+    const auto a=makeAssignment("2000-01-01T00:00:00Z");
+    const auto l=lecturer();
+    const auto student=studentSession();
+    const auto version=submissionService.submit(student,a.id,{"Original marked work",""});
+    const auto result=marking.mark(l,version.submissionId,70,"Saved marking","");
+    EXPECT_DOUBLE_EQ(result.finalMark,0);
+    EXPECT_THROW(submissions.grantClassExtension(l,a.id,"2030-11-01T00:00:00Z"),
+                 std::invalid_argument);
+    EXPECT_TRUE(submissions.classExtensionDeadline(l,a.id).empty());
+    const auto after=marking.currentResult(l,version.submissionId);
+    ASSERT_TRUE(after.has_value());
+    EXPECT_DOUBLE_EQ(after->finalMark,0);
+}
+
+TEST(DatabaseTests, MigratesV10DatabaseWithoutLosingAccountsOrRepeatingChanges)
+{
+    namespace fs=std::filesystem;
+    const auto dbFile=fs::temp_directory_path()/(
+        "cr1_migration_"+std::to_string(
+            std::chrono::steady_clock::now().time_since_epoch().count())+".sqlite3");
+    const auto schemaPath=(fs::current_path()/"lms_schema.sql").string();
+    try {
+        sqlite3* raw=nullptr;
+        ASSERT_EQ(sqlite3_open(dbFile.string().c_str(),&raw),SQLITE_OK);
+        std::ifstream input(schemaPath);
+        ASSERT_TRUE(input.good());
+        const std::string oldSchema(std::istreambuf_iterator<char>{input},
+                                    std::istreambuf_iterator<char>{});
+        ASSERT_EQ(sqlite3_exec(raw,oldSchema.c_str(),nullptr,nullptr,nullptr),SQLITE_OK);
+        ASSERT_EQ(sqlite3_exec(raw,
+            "INSERT INTO users(username,password_hash,role) "
+            "VALUES('originalstudent','preserved-hash','Student');",
+            nullptr,nullptr,nullptr),SQLITE_OK);
+        sqlite3_close(raw);
+        {
+            lms::SqliteDatabase db(dbFile.string());
+            db.initializeSchemaFromFile(schemaPath);
+            db.initializeSchemaFromFile(schemaPath);
+            sqlite3_stmt* st=nullptr;
+            ASSERT_EQ(sqlite3_prepare_v2(db.connection(),
+                "SELECT COUNT(*) FROM sqlite_master WHERE type='table' "
+                "AND name='class_deadline_extensions';",-1,&st,nullptr),SQLITE_OK);
+            ASSERT_EQ(sqlite3_step(st),SQLITE_ROW);
+            EXPECT_EQ(sqlite3_column_int(st,0),1);
+            sqlite3_finalize(st);
+            st=nullptr;
+            ASSERT_EQ(sqlite3_prepare_v2(db.connection(),
+                "SELECT password_hash FROM users WHERE username='originalstudent';",
+                -1,&st,nullptr),SQLITE_OK);
+            ASSERT_EQ(sqlite3_step(st),SQLITE_ROW);
+            EXPECT_STREQ(reinterpret_cast<const char*>(
+                sqlite3_column_text(st,0)),"preserved-hash");
+            sqlite3_finalize(st);
+        }
+        fs::remove(dbFile);
+    } catch(...) {
+        std::error_code ignored;
+        fs::remove(dbFile,ignored);
+        throw;
+    }
 }
