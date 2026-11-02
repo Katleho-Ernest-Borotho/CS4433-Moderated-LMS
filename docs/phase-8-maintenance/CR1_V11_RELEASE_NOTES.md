@@ -1,6 +1,6 @@
 # Moderated Learning Management System — v1.1 Release Candidate Notes
 
-**Status:** v1.1 release candidate preparation, not final signed release  
+**Status:** v1.1 independently tested release candidate; formal supervisor sign-off outstanding  
 **Branch:** `feature/phase8-cr1-class-extensions`  
 **Change request:** CR1, whole-class assignment deadline extensions  
 **Baseline:** v1.0 offline single-PC Windows desktop LMS  
@@ -57,8 +57,8 @@ v1.1 uses **13 application tables**.
 | Windows UCRT64 CI at implementation checkpoint | **PASS** |
 | Developer's manual CR1 GUI confirmation | **REPORTED PASS** |
 | Upgrading stored v1.0 data without account loss | **Automated test PASS** |
-| Independent v1.1 Release package generated | **PASS — development PC packaged successfully; independent launch pending** |
-| v1.1 tested on second Windows laptop | **PENDING** |
+| v1.1 Release package generated | **PASS** — Windows Release deployment package created |
+| v1.1 on second Windows laptop | **USER-REPORTED PASS** — offline launch, CR1 dates, persistence, backup verification |
 | Supervisor sign-off/release tag | **PENDING** |
 
 The v1.0 second-laptop deployment was tested and reported working; that
@@ -75,7 +75,12 @@ evidence is not automatically transferable to the new v1.1 binary.
 
 ## Gate for final v1.1 release
 
-Review the generated v1.1 package and BUILD_PROVENANCE.txt, independently launch on the second laptop,
-verify migration and class/individual deadline behaviour using test data,
-confirm backup/restore, record outcomes and packaging SHA, then seek
-supervisor acceptance. Until then call this a **release candidate**.
+**Package provenance and independent test recorded:** build commit
+`adbd8e194fc0856e9e478880d385a1b1c14d0a5e`, packed
+`2026-11-02T02:35:35Z`, and user-reported second-laptop success.
+
+**Before final release:** archive the second-laptop screenshots/test log,
+separately execute and document the offline restore and real v1.0→v1.1
+migration acceptance on an expendable test profile, review redistribution
+licences, and obtain supervisor approval. The repository's maintenance
+branch is still a release candidate, not a tagged final handover.
