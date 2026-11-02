@@ -19,5 +19,9 @@ public:
                                 std::int64_t studentId, std::string_view newDeadlineUtc) = 0;
     virtual std::string effectiveDeadline(const Session& actor, std::int64_t assignmentId,
                                           std::int64_t studentId) const = 0;
+    virtual void grantClassExtension(const Session& lecturer, std::int64_t assignmentId,
+                                     std::string_view newDeadlineUtc) = 0;
+    virtual std::string classExtensionDeadline(const Session& actor,
+                                               std::int64_t assignmentId) const = 0;
 };
 } // namespace lms
