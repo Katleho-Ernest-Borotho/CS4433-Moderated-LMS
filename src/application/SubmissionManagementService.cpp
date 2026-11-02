@@ -106,6 +106,45 @@ void SubmissionManagementService::grantExtension(
     academic_.saveExtension(assignmentId,studentId,actor.userId(),newDeadlineUtc);
 }
 
+
+void SubmissionManagementService::grantClassExtension(
+    const Session& actor, std::int64_t assignmentId, std::string_view newDeadlineUtc)
+{
+    authentication_.requireRole(actor,Role::Lecturer);
+    validateUtcDateTime(newDeadlineUtc);
+    const auto assignment=academic_.findAssignmentById(assignmentId);
+    if(!assignment)throw std::invalid_argument("Assignment does not exist");
+    if(!academic_.isLecturerAssigned(actor.userId(),assignment->courseId))
+        throw AuthenticationError("Cannot extend an assignment outside your assigned courses");
+    const auto previous=academic_.findClassExtensionDeadline(assignmentId);
+    const auto reference=previous.empty()?assignment->deadlineUtc:previous;
+    if(newDeadlineUtc<=std::string_view(reference))
+        throw std::invalid_argument("Class extension must move the class deadline later");
+    academic_.saveClassExtension(assignmentId,actor.userId(),newDeadlineUtc,utcNow());
+}
+
+std::string SubmissionManagementService::classExtensionDeadline(
+    const Session& actor, std::int64_t assignmentId) const
+{
+    const auto assignment=academic_.findAssignmentById(assignmentId);
+    if(!assignment)throw std::invalid_argument("Assignment does not exist");
+    switch(actor.role()) {
+    case Role::Student:
+        authentication_.requireRole(actor,Role::Student);
+        if(!academic_.isStudentEnrolled(actor.userId(),assignment->courseId))
+            throw AuthenticationError("Class deadline not visible outside enrolled courses");
+        break;
+    case Role::Lecturer:
+        authentication_.requireRole(actor,Role::Lecturer);
+        if(!academic_.isLecturerAssigned(actor.userId(),assignment->courseId))
+            throw AuthenticationError("Class deadline not visible outside assigned courses");
+        break;
+    default:
+        throw AuthenticationError("Class deadline is visible only to students and lecturers");
+    }
+    return academic_.findClassExtensionDeadline(assignmentId);
+}
+
 std::string SubmissionManagementService::effectiveDeadline(
     const Session& actor, std::int64_t assignmentId, std::int64_t studentId) const
 {
