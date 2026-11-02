@@ -5,6 +5,7 @@
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QInputDialog>
+#include <QLineEdit>
 #include <QLockFile>
 #include <QMessageBox>
 #include <QStandardPaths>
@@ -25,7 +26,6 @@ int main(int argc,char** argv)
     }
     // Same lock as the main application; prevents restore while LMS is running.
     QLockFile lock(data+"/lms.lock");
-    lock.setStaleLockTime(0);
     if(!lock.tryLock(0)) {
         QMessageBox::critical(nullptr,"Close the LMS first",
             "The LMS is open or another maintenance process is active. "
