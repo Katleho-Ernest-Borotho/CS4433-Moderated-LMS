@@ -3,6 +3,7 @@
 #include "lms/ui/AssignmentPanel.h"
 #include "lms/ui/MarkingPanel.h"
 #include "lms/ui/ResultsPanel.h"
+#include "lms/ui/MaintenancePanel.h"
 
 #include <QAbstractItemView>
 #include <QComboBox>
@@ -58,8 +59,12 @@ LoginWindow::LoginWindow(IAuthenticationService& authentication,
                          BootstrapService& bootstrap,
                          IAcademicManagementService& accounts,
                          ISubmissionService& submissions,
-                         IMarkingService& marking, IModerationService& moderation)
-    : authentication_(authentication), bootstrap_(bootstrap), accounts_(accounts), submissions_(submissions), marking_(marking), moderation_(moderation)
+                         IMarkingService& marking, IModerationService& moderation,
+                         AdminReportingService& reporting, sqlite3* database,
+                         QString dataDirectory)
+    : authentication_(authentication), bootstrap_(bootstrap), accounts_(accounts),
+      submissions_(submissions), marking_(marking), moderation_(moderation),
+      reporting_(reporting), database_(database), dataDirectory_(std::move(dataDirectory))
 {
     setWindowTitle("Moderated Learning Management System");
     setMinimumSize(700, 520);
@@ -218,6 +223,9 @@ QWidget* LoginWindow::createDashboardPage()
     academicPanel_ = new AcademicPanel(accounts_, session_, adminTabs_);
     adminTabs_->addTab(adminPanel_, "User management");
     adminTabs_->addTab(academicPanel_, "Academic management");
+    maintenancePanel_ = new MaintenancePanel(authentication_, reporting_,
+        database_, session_, dataDirectory_, adminTabs_);
+    adminTabs_->addTab(maintenancePanel_, "Maintenance and reports");
     layout->addWidget(adminTabs_);
 
     learningTabs_ = new QTabWidget(page);
@@ -306,6 +314,7 @@ void LoginWindow::showDashboard()
     if (administrator) {
         refreshAccounts();
         academicPanel_->refresh();
+        maintenancePanel_->refresh();
     } else {
         try {
             const auto courses = accounts_.listVisibleCourses(*session_);
