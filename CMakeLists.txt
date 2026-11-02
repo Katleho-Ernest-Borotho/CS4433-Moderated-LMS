@@ -5,6 +5,16 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+# Separate, opt-in build for measured Phase 5 business-logic coverage.
+option(LMS_ENABLE_COVERAGE "Compile tests with GCC coverage instrumentation" OFF)
+if(LMS_ENABLE_COVERAGE)
+    if(NOT CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+        message(FATAL_ERROR "Coverage instrumentation requires GCC in MSYS2 UCRT64")
+    endif()
+    add_compile_options(--coverage -O0 -g)
+    add_link_options(--coverage)
+endif()
+
 find_package(Qt6 REQUIRED COMPONENTS Widgets)
 qt_standard_project_setup()
 find_package(SQLite3 REQUIRED)
