@@ -46,7 +46,7 @@ add_library(lms_core
     src/application/ModerationService.cpp
 )
 target_include_directories(lms_core PUBLIC include)
-target_link_libraries(lms_core PUBLIC SQLite::SQLite3 PkgConfig::SODIUM)
+target_link_libraries(lms_core PUBLIC SQLite3::SQLite3 PkgConfig::SODIUM)
 
 qt_add_executable(ModeratedLMS
     src/main.cpp
