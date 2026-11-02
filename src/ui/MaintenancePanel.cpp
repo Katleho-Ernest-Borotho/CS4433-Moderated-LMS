@@ -13,6 +13,10 @@
 #include <QTableWidget>
 #include <QTableWidgetItem>
 #include <QVBoxLayout>
+#include <filesystem>
+#include <cstddef>
+#include <cstdint>
+#include <utility>
 #include <stdexcept>
 
 namespace lms {
