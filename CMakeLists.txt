@@ -59,6 +59,26 @@ qt_add_executable(ModeratedLMS
 )
 target_link_libraries(ModeratedLMS PRIVATE Qt6::Widgets lms_core)
 
+# The same multi-size ICO is embedded both in Qt resources (window/taskbar icon)
+# and the Windows executable (Explorer shortcut/file icon).
+qt_add_resources(ModeratedLMS "moderated_lms_app_icon"
+    PREFIX "/"
+    FILES assets/ModeratedLMS_app_icon.ico
+)
+if(WIN32)
+    enable_language(RC)
+    set(_lms_windows_icon "${CMAKE_CURRENT_SOURCE_DIR}/assets/ModeratedLMS_app_icon.ico")
+    file(TO_CMAKE_PATH "${_lms_windows_icon}" _lms_windows_icon_rc)
+    file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/moderated_lms_icon.rc"
+        "1 ICON \"${_lms_windows_icon_rc}\"\n")
+    set_source_files_properties(
+        "${CMAKE_CURRENT_BINARY_DIR}/moderated_lms_icon.rc"
+        PROPERTIES OBJECT_DEPENDS "${_lms_windows_icon}"
+    )
+    target_sources(ModeratedLMS PRIVATE
+        "${CMAKE_CURRENT_BINARY_DIR}/moderated_lms_icon.rc")
+endif()
+
 # Deliberately OFF in normal builds and distribution packages.
 # Enable only for an authorised local administrator recovery on the development PC.
 option(LMS_ENABLE_LOCAL_ADMIN_RECOVERY "Build the local admin recovery utility" OFF)

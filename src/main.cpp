@@ -15,6 +15,7 @@
 #include <QApplication>
 #include <QCoreApplication>
 #include <QDir>
+#include <QIcon>
 #include <QMessageBox>
 #include <QLockFile>
 #include <QStandardPaths>
@@ -27,6 +28,7 @@ int main(int argc, char* argv[])
     QApplication application(argc, argv);
     application.setApplicationName("ModeratedLMS");
     application.setOrganizationName("CS4433");
+    application.setWindowIcon(QIcon(":/assets/ModeratedLMS_app_icon.ico"));
 
     try {
         const QString dataDirectory =
