@@ -13,7 +13,9 @@ The final narrated application demonstration and slide presentation is **10 minu
 
 **Video link:** [Download the final recorded presentation (MP4)](https://github.com/Katleho-Ernest-Borotho/CS4433-Moderated-LMS/releases/download/v1.1/CS4433_Moderated_LMS_Final_Presentation.mp4)
 
-**Upload status:** The MP4 must first be attached as a binary asset to the existing [v1.1 GitHub release candidate](https://github.com/Katleho-Ernest-Borotho/CS4433-Moderated-LMS/releases/tag/v1.1), using the exact asset filename `CS4433_Moderated_LMS_Final_Presentation.mp4`. Until it is uploaded, the direct MP4 link above does not resolve. This documentation is prepared in advance; do not interpret the link as proof of upload.
+**Compact report with clickable video reference:** [Download the updated four-page report (PDF)](https://github.com/Katleho-Ernest-Borotho/CS4433-Moderated-LMS/releases/download/v1.1/CS4433_Moderated_LMS_Report_With_Video_Link.pdf)
+
+**Upload status:** The MP4 and revised PDF must first be attached as binary assets to the existing [v1.1 GitHub release candidate](https://github.com/Katleho-Ernest-Borotho/CS4433-Moderated-LMS/releases/tag/v1.1), using the exact asset filenames `CS4433_Moderated_LMS_Final_Presentation.mp4` and `CS4433_Moderated_LMS_Report_With_Video_Link.pdf`. Until they are uploaded, the direct asset links above do not resolve. This documentation is prepared in advance; do not interpret the link as proof of upload.
 
 **SHA-256:** `fe4534df81eb33948110aca5adb3d622014bbc3d96d8a6e38029425290babb8d`
 
