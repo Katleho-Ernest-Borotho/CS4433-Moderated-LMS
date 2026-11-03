@@ -7,6 +7,20 @@
 **Working report:** `CS4433_Final_Project_Report_202322762_DRAFT.pdf` has been generated in the conversation as a 21-page editable review deliverable (approximately 6,900 words before references and appendices). It is intentionally **not yet claimed as the signed final report**. Save the PDF in this folder if the university requests the report within the repository too; the GitHub connector cannot automatically fetch files from the developer's ChatGPT downloads.
 
 
+## Recorded presentation video
+
+The final narrated application demonstration and slide presentation is **10 minutes 12 seconds** (MP4; 34,861,769 bytes). It uses fictional demonstration users and shows role-based administration, lecturer extensions, student submission, marking, HoD moderation and released results.
+
+**Video link:** [Download the final recorded presentation (MP4)](https://github.com/Katleho-Ernest-Borotho/CS4433-Moderated-LMS/releases/download/v1.1/CS4433_Moderated_LMS_Final_Presentation.mp4)
+
+**Upload status:** The MP4 must first be attached as a binary asset to the existing [v1.1 GitHub release candidate](https://github.com/Katleho-Ernest-Borotho/CS4433-Moderated-LMS/releases/tag/v1.1), using the exact asset filename `CS4433_Moderated_LMS_Final_Presentation.mp4`. Until it is uploaded, the direct MP4 link above does not resolve. This documentation is prepared in advance; do not interpret the link as proof of upload.
+
+**SHA-256:** `fe4534df81eb33948110aca5adb3d622014bbc3d96d8a6e38029425290babb8d`
+
+The original compact four-page PDF report is retained as an independent downloadable deliverable; only an unobtrusive clickable presentation link is added to its page 4 in the separately provided revision. No test-result, architecture or project evidence text is altered.
+
+---
+
 ## Accepted expanded draft and final evidence audit (2 November 2026)
 
 The user has selected `CS4433_Final_Report_Expanded_Draft_202322762.docx` as the base document to retain for the final report. It is held as a conversation deliverable (not yet uploaded into this folder). Its prose must not be silently rewritten; remaining appendix work should use the following grounded records:
