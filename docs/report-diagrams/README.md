@@ -1,6 +1,6 @@
 # CS4433 — original report diagrams
 
-All figures below come from the user's submitted project documents. The Week 3 PNGs are the original images supplied with the editable draw.io package; the Week 2 use-case JPEG was extracted directly from the submitted requirements PDF; the CR1/deployment SVGs were rendered from the existing draw.io shapes and labels, with the original editable files retained.
+All figures below come from the submitted project documents. The Week 3 PNGs are the original images supplied with the editable draw.io package; the Week 2 use-case JPEG was extracted directly from the submitted requirements PDF; the CR1/deployment SVGs were rendered from the existing draw.io shapes and labels, with the original editable files retained.
 
 ## Week 1 and Week 2
 
