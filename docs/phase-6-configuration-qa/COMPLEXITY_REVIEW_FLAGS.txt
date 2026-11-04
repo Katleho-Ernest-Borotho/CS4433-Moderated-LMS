@@ -1,0 +1,6 @@
+src\persistence/BackupManager.cpp:192: warning: lms::BackupManager::verify has 47 NLOC, 22 CCN, 459 token, 1 PARAM, 47 length, 0 ND
+src\persistence/SQLiteAssessmentRepository.cpp:127: warning: lms::SQLiteRecordRepository::saveUnreleasedMark has 87 NLOC, 23 CCN, 793 token, 9 PARAM, 89 length, 0 ND
+src\persistence/SQLiteModerationRepository.cpp:155: warning: lms::SQLiteRecordRepository::approveMark has 49 NLOC, 18 CCN, 487 token, 8 PARAM, 52 length, 0 ND
+src\persistence/SQLiteSubmissionRepository.cpp:111: warning: lms::SQLiteRecordRepository::saveVersion has 94 NLOC, 25 CCN, 893 token, 5 PARAM, 101 length, 0 ND
+src\ui/AssignmentPanel.cpp:66: warning: lms::AssignmentPanel::AssignmentPanel has 152 NLOC, 1 CCN, 1380 token, 4 PARAM, 162 length, 0 ND
+include\lms\domain/UtcDateTime.h:10: warning: lms::validateUtcDateTime has 24 NLOC, 23 CCN, 390 token, 1 PARAM, 24 length, 0 ND

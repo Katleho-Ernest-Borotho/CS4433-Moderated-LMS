@@ -1,0 +1,109 @@
+cmake_minimum_required(VERSION 3.21)
+project(ModeratedLMS LANGUAGES CXX)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+# Separate, opt-in build for measured Phase 5 business-logic coverage.
+option(LMS_ENABLE_COVERAGE "Compile tests with GCC coverage instrumentation" OFF)
+if(LMS_ENABLE_COVERAGE)
+    if(NOT CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+        message(FATAL_ERROR "Coverage instrumentation requires GCC in MSYS2 UCRT64")
+    endif()
+    add_compile_options(--coverage -O0 -g)
+    add_link_options(--coverage)
+endif()
+
+find_package(Qt6 REQUIRED COMPONENTS Widgets)
+qt_standard_project_setup()
+find_package(SQLite3 REQUIRED)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(SODIUM REQUIRED IMPORTED_TARGET libsodium)
+
+configure_file(schema/lms_schema.sql ${CMAKE_CURRENT_BINARY_DIR}/lms_schema.sql COPYONLY)
+
+add_library(lms_core
+    src/domain/User.cpp
+    src/domain/LatePenaltyPolicy.cpp
+    src/persistence/SqliteDatabase.cpp
+    src/persistence/BackupManager.cpp
+    src/persistence/BackupRestore.cpp
+    src/persistence/SQLiteRecordRepository.cpp
+    src/persistence/SQLiteAcademicRepository.cpp
+    src/persistence/SQLiteAssignmentsRepository.cpp
+    src/persistence/SQLiteSubmissionRepository.cpp
+    src/persistence/SQLiteAssessmentRepository.cpp
+    src/persistence/SQLiteModerationRepository.cpp
+    src/persistence/LocalSubmissionContentStore.cpp
+    src/security/SodiumPasswordHasher.cpp
+    src/application/AuthenticationService.cpp
+    src/application/BootstrapService.cpp
+    src/application/AcademicManagementService.cpp
+    src/application/AdminReportingService.cpp
+    src/application/SubmissionManagementService.cpp
+    src/application/MarkingService.cpp
+    src/application/ModerationService.cpp
+)
+target_include_directories(lms_core PUBLIC include)
+target_link_libraries(lms_core PUBLIC SQLite3::SQLite3 PkgConfig::SODIUM)
+
+qt_add_executable(ModeratedLMS
+    src/main.cpp
+    src/ui/LoginWindow.cpp
+    src/ui/AcademicPanel.cpp
+    src/ui/AssignmentPanel.cpp
+    src/ui/MarkingPanel.cpp
+    src/ui/ResultsPanel.cpp
+    src/ui/MaintenancePanel.cpp
+)
+target_link_libraries(ModeratedLMS PRIVATE Qt6::Widgets lms_core)
+
+# The same multi-size ICO is embedded both in Qt resources (window/taskbar icon)
+# and the Windows executable (Explorer shortcut/file icon).
+qt_add_resources(ModeratedLMS "moderated_lms_app_icon"
+    PREFIX "/"
+    FILES assets/ModeratedLMS_app_icon.ico
+)
+if(WIN32)
+    enable_language(RC)
+    set(_lms_windows_icon "${CMAKE_CURRENT_SOURCE_DIR}/assets/ModeratedLMS_app_icon.ico")
+    file(TO_CMAKE_PATH "${_lms_windows_icon}" _lms_windows_icon_rc)
+    file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/moderated_lms_icon.rc"
+        "1 ICON \"${_lms_windows_icon_rc}\"\n")
+    set_source_files_properties(
+        "${CMAKE_CURRENT_BINARY_DIR}/moderated_lms_icon.rc"
+        PROPERTIES OBJECT_DEPENDS "${_lms_windows_icon}"
+    )
+    target_sources(ModeratedLMS PRIVATE
+        "${CMAKE_CURRENT_BINARY_DIR}/moderated_lms_icon.rc")
+endif()
+
+# Deliberately OFF in normal builds and distribution packages.
+# Enable only for an authorised local administrator recovery on the development PC.
+option(LMS_ENABLE_LOCAL_ADMIN_RECOVERY "Build the local admin recovery utility" OFF)
+if(LMS_ENABLE_LOCAL_ADMIN_RECOVERY)
+    qt_add_executable(ModeratedLMSAdminRecovery src/tools/AdminRecovery.cpp)
+    target_link_libraries(ModeratedLMSAdminRecovery PRIVATE Qt6::Widgets lms_core)
+endif()
+
+# A restore tool can never share a database connection with the running LMS.
+qt_add_executable(ModeratedLMSRestore src/tools/RestoreBackup.cpp)
+target_link_libraries(ModeratedLMSRestore PRIVATE Qt6::Widgets lms_core)
+
+# Isolated, optional acceptance benchmark: 800 stored Student accounts,
+# 20 measured valid logins (NFR-01). Does not touch the live LMS database.
+option(LMS_ENABLE_NFR_BENCHMARK "Build isolated NFR-01 login benchmark" OFF)
+if(LMS_ENABLE_NFR_BENCHMARK)
+    add_executable(lms_login_benchmark tests/login_benchmark.cpp)
+    target_link_libraries(lms_login_benchmark PRIVATE lms_core)
+endif()
+
+include(CTest)
+if(BUILD_TESTING)
+    find_package(GTest CONFIG REQUIRED)
+    add_executable(lms_tests tests/core_tests.cpp)
+    target_link_libraries(lms_tests PRIVATE lms_core GTest::gtest_main)
+    include(GoogleTest)
+    gtest_discover_tests(lms_tests)
+endif()

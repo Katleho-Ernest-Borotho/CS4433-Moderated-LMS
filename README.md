@@ -1,60 +1,102 @@
-# CS4433 – Moderated Learning Management System
+# Moderated Learning Management System
 
-## Windows releases, packages and source tags
+An **offline Windows desktop application** for managing assignments, student submissions, marking and moderated results. Built in **C++17**, **Qt 6** and **SQLite**, with four permission-controlled user roles.
 
-The project has two academic Windows release-candidate baselines: **v1.0** (original four-role LMS) and **v1.1** (CR1 class deadline extensions).
+**[Download Windows app](https://github.com/Katleho-Ernest-Borotho/CS4433-Moderated-LMS/releases/download/v1.1/ModeratedLMS_v1.1_windows_ucrt64.zip)** · **[Watch demonstration](https://github.com/Katleho-Ernest-Borotho/CS4433-Moderated-LMS/releases/download/v1.1/Video.Project.1.mp4)** · **[Read project report](https://github.com/Katleho-Ernest-Borotho/CS4433-Moderated-LMS/releases/download/v1.1/Report_202322762.docx)** · **[All releases](https://github.com/Katleho-Ernest-Borotho/CS4433-Moderated-LMS/releases)**
 
-- [GitHub Releases — Windows ZIPs and SHA-256 checksums](../../releases)
-- [Source tags — v1.0 and v1.1](../../tags)
-- [Publish/verify workflow](.github/workflows/publish-windows-release.yml)
-- [Release procedure and provenance](docs/RELEASE_GUIDE.md)
+## Features
 
-Release publication is manual through Actions; the two entries appear after the workflow is run for each version. These are **pre-release academic builds**, not signed installers or supervisor-approved production distributions.
+| User | Features |
+| --- | --- |
+| **Administrator** | Manage users, departments, courses, lecturer assignments, student enrolments, backups and reporting |
+| **Lecturer** | Create assignments, grant individual or class deadline extensions, review work, mark submissions and provide feedback |
+| **Head of Department** | Moderate assessments, record reasons for mark adjustments, approve and release results |
+| **Student** | View courses and deadlines, submit work, review submission versions, and see released results |
 
+**Assessment flow:** Student submits → Lecturer records a provisional mark → HoD approves after the effective deadline → HoD explicitly releases → Student sees the result. Marks and feedback remain private until release.
 
-Individual Software Engineering project for a secondary-school Moderated Learning Management System (LMS).
+The app supports text and PDF/DOCX/TXT attachments, versioned submissions, late-work penalties and mark-change audit records. Version **1.1** adds whole-class deadline extensions while respecting longer individual deadlines.
 
-## Project scope
+## Install on Windows
 
-- Four roles: Administrator, Lecturer, Head of Department (HoD), and Student.
-- Management of users, departments, courses, enrolments and assignments.
-- Assignment submissions as typed text, an attached file, or both.
-- Individual extensions, resubmission history, late-work penalties, lecturer marking, written feedback, HoD moderation and controlled release of results.
-- Audit history for changes to marks.
+The Windows download is a **portable ZIP**, not an installer. You do not need a C++ compiler or MSYS2 to run it.
 
-## Agreed Phase 1 deployment direction
+1. [Download the complete v1.1 ZIP](https://github.com/Katleho-Ernest-Borotho/CS4433-Moderated-LMS/releases/download/v1.1/ModeratedLMS_v1.1_windows_ucrt64.zip).
+2. In File Explorer, **Extract All** to a normal folder.
+3. Open the extracted application folder and run **`ModeratedLMS.exe`**. Keep `lms_schema.sql`, DLLs and the `platforms` folder together with the executable.
+4. On first launch in a new Windows profile, create the initial Administrator with a password of at least **12 characters**.
+5. Log in as Administrator, create user accounts, add a department and course, assign a Lecturer and HoD, then enrol Students.
+6. Sign out and log in with a role-specific account to use the corresponding functions.
 
-- **Implementation:** C++17 desktop application with a simple GUI.
-- **Persistence:** Local SQLite database accessed through a data-access layer.
-- **Deployment:** Version 1.0 targets a single school computer and works without requiring Internet access for normal operation.
-- **Deployment verification:** A second laptop will be used to check that the packaged program runs outside the development environment; it is not a second network client.
-- **Build and quality tools:** CMake, Git, automated tests (GoogleTest or Catch2), static analysis and CI when implementation work begins.
+The database and attachments are saved under the **current Windows user's Local AppData**, separately from the program files. Replacing the extracted app does not automatically remove those records. Back up existing data before upgrading from v1.0; v1.1 applies a small additive schema migration on startup.
 
-## Project phase documents
+Full walkthrough: [User manual](docs/phase-7-deployment/ROLE_USER_MANUAL_V11.md) · [Backup and restore](OPERATIONS_BACKUP_REPORTS.md).
 
-| Phase | Folder | Status |
-|---|---|---|
-| 1 – Planning and management | `docs/phase-1-planning/` | Submitted PDF archived |
-| 2 – Requirements engineering | `docs/phase-2-requirements/` | Submitted PDF archived |
-| 3 – System design | `docs/phase-3-design/` | Planned |
-| 4 – Implementation | `docs/phase-4-implementation/` | Planned after Gate 2 |
-| 5 – Verification and validation | `docs/phase-5-verification-validation/` | Planned |
-| 6 – Configuration management and QA | `docs/phase-6-configuration-qa/` | Planned |
-| 7 – Deployment | `docs/phase-7-deployment/` | Planned; release v1.0 |
-| 8 – Maintenance | `docs/phase-8-maintenance/` | Planned; change request CR1 and release v1.1 |
+## Report, presentation and documentation
 
-**Approval caution:** Submission of the Phase 2 report does not by itself prove Gate 1 was approved. Implementation must not begin until the design has passed Gate 2, as required by the assignment.
+| Resource | Access |
+| --- | --- |
+| **Recorded presentation & live demo** (10 min 12 sec) | [Watch / download MP4](https://github.com/Katleho-Ernest-Borotho/CS4433-Moderated-LMS/releases/download/v1.1/Video.Project.1.mp4) |
+| **Project report** (editable Word) | [Download Report_202322762.docx](https://github.com/Katleho-Ernest-Borotho/CS4433-Moderated-LMS/releases/download/v1.1/Report_202322762.docx) |
+| **Application package** | [v1.1 Windows ZIP](https://github.com/Katleho-Ernest-Borotho/CS4433-Moderated-LMS/releases/download/v1.1/ModeratedLMS_v1.1_windows_ucrt64.zip) |
+| **Four-role user guide** | [Installation, accounts and workflows](docs/phase-7-deployment/ROLE_USER_MANUAL_V11.md) |
+| **Project documentation** | [Requirements, design, tests and deployment](docs/README.md) |
+| **Editable architecture/UML diagrams** | [Diagram index](docs/report-diagrams/README.md) |
 
-## Repository structure
+The demonstration uses fictional users and data.
+
+## Architecture and technology
+
+- **GUI:** Qt 6 Widgets
+- **Core:** C++17, layered application services, domain rules, repository interfaces
+- **Storage:** SQLite transactions, foreign-key relationships and local attachment files
+- **Security:** libsodium password hashing, service-level permission checks and restricted result release
+- **Build / test:** CMake, Ninja, MSYS2 UCRT64, GoogleTest, CTest and GitHub Actions
+- **Quality checks:** cppcheck, gcovr and Lizard
 
 ```text
-CS4433-Moderated-LMS/
-├── docs/                 # Course deliverables by phase
-├── src/                  # C++ source files (after Gate 2)
-├── include/              # C++ headers (after Gate 2)
-├── tests/                # Automated tests (during implementation/V&V)
-├── scripts/              # Optional build/deployment utilities
-├── .gitignore
-├── GIT_WORKFLOW.md
+Qt UI → Application services → Domain rules / repository interfaces
+                              → SQLite database + local attachments
 ```
 
+Normal operation is **offline on one Windows computer**. Web/mobile access, automated grading and multi-computer concurrent use are outside the implemented scope.
+
+## Source code
+
+```text
+assets/      Application icon
+include/     C++ public headers and interfaces
+src/         UI, application, domain, persistence, security and tools
+schema/      Database schema and v1.1 migration
+tests/       GoogleTest regression tests
+scripts/     Packaging and metrics utilities
+docs/        Planning, requirements, design, testing and deployment evidence
+.github/     Continuous integration and Windows release automation
+```
+
+For a detailed build procedure, see [BUILD.md](BUILD.md). In **MSYS2 UCRT64** with the dependencies installed:
+
+```bash
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug
+cmake --build build
+ctest --test-dir build --output-on-failure
+./build/ModeratedLMS.exe
+```
+
+## Testing and releases
+
+| Recorded check | Result |
+| --- | --- |
+| v1.0 baseline regression | **115/115 passed** |
+| v1.1 class-extension regression | **128/128 passed** |
+| v1.0 domain/application line coverage | **92%** (484/524 executable lines; not a measured v1.1 figure) |
+| Login performance with 800 synthetic student records | **20/20 valid logins within 2 seconds** |
+| Portable v1.1 package | Developer-reported successful testing on a second Windows laptop |
+
+The release ZIPs are versioned under [GitHub Releases](https://github.com/Katleho-Ernest-Borotho/CS4433-Moderated-LMS/releases); the source tags `v1.0` and `v1.1` preserve their respective baselines. Further documentation and appearance changes in the development history do not alter those published packages.
+
+**Status:** These are academic **release candidates**, not signed or formally approved production deployments. Existing limitations include single-computer operation, unencrypted backup folders, and outstanding formal accessibility and acceptance review. Use fictional data for testing and treat all actual student records as confidential.
+
+---
+
+Created and maintained as an individual software engineering project.
