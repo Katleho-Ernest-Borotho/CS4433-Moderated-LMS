@@ -24,4 +24,4 @@ These are not signed installers. No school database, private accounts, live subm
 
 The GitHub **Packages** panel is not used: a desktop ZIP belongs under **Releases**. Source archives are automatically provided for each tag. The pre-release status is intentional because formal supervisor sign-off is not recorded.
 
-[Release index](../../releases) · [CI status](../../actions)
+[Release index](https://github.com/Katleho-Ernest-Borotho/CS4433-Moderated-LMS/releases) · [CI status](https://github.com/Katleho-Ernest-Borotho/CS4433-Moderated-LMS/actions)
