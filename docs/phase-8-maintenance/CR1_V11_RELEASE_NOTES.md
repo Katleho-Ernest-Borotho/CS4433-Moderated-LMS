@@ -58,7 +58,7 @@ v1.1 uses **13 application tables**.
 | Developer's manual CR1 GUI confirmation | **REPORTED PASS** |
 | Upgrading stored v1.0 data without account loss | **Automated test PASS** |
 | v1.1 Release package generated | **PASS** — Windows Release deployment package created |
-| v1.1 on second Windows laptop | **USER-REPORTED PASS** — offline launch, CR1 dates, persistence, backup verification |
+| v1.1 on second Windows laptop | **DEVELOPER-REPORTED PASS** — offline launch, CR1 dates, persistence, backup verification |
 | Supervisor sign-off/release tag | **PENDING** |
 
 The v1.0 second-laptop deployment was tested and reported working; that
@@ -77,7 +77,7 @@ evidence is not automatically transferable to the new v1.1 binary.
 
 **Package provenance and independent test recorded:** build commit
 `adbd8e194fc0856e9e478880d385a1b1c14d0a5e`, packed
-`2026-11-02T02:35:35Z`, and user-reported second-laptop success.
+`2026-11-02T02:35:35Z`, and developer-reported second-laptop success.
 
 **Before final release:** archive the second-laptop screenshots/test log,
 separately execute and document the offline restore and real v1.0→v1.1
