@@ -2,7 +2,7 @@
 
 **Report baseline accepted for final editing:** `CS4433_Final_Report_Expanded_Draft_202322762.docx`. Its main prose is preserved; this is a supporting evidence register. **As of 2 November 2026**.
 
-**Status meanings:** VERIFIED = dated tool evidence or linked file; USER-REPORTED = user confirmed work without individually archived logs/screenshots; PENDING = not separately executed/documented. Only observed results may be filled in.
+**Status meanings:** VERIFIED = dated tool evidence or linked file; DEVELOPER-REPORTED = developer confirmed work without individually archived logs/screenshots; PENDING = not separately executed/documented. Only observed results may be filled in.
 
 | Assessed item | Evidence/source | Status | Remaining action |
 |---|---|---|---|
@@ -15,9 +15,9 @@
 | v1.1 CR1 regression | Phase 8 evidence and CI | VERIFIED — 128/128 | Include CI link and count in test appendix |
 | Static analysis and complexity | Phase 6 documents | VERIFIED — cppcheck 29 sources; 311 functions avg CCN 3.6 | Reviewer sign/date still required |
 | v1.0 and v1.1 tagged Windows ZIPs | GitHub Releases | VERIFIED pre-releases | Keep signed/approved status distinct from pre-release |
-| Second-laptop v1.1 launch, CR1 two-student due dates, restart, backup verification | Phase 8 handover summary | USER-REPORTED PASS | Archive screenshots and device/OS information |
+| Second-laptop v1.1 launch, CR1 two-student due dates, restart, backup verification | Phase 8 handover summary | DEVELOPER-REPORTED PASS | Archive screenshots and device/OS information |
 | ST-01–ST-16 complete manual system cases | System acceptance / defect log | PENDING comprehensive record | Record each executed test, failure/defect, screenshots |
-| NFR-02 full offline test for every role | V-Model test plan | USER-REPORTED partial | Repeat formal four-role disconnected test and record |
+| NFR-02 full offline test for every role | V-Model test plan | DEVELOPER-REPORTED partial | Repeat formal four-role disconnected test and record |
 | NFR-03 hash security database inspection | Tests + NFR plan | AUTOMATED VERIFIED; manual inspection PENDING | Inspect only synthetic database for hashed values |
 | NFR-04 usability: four independent role users | SRS + test plan | PENDING | Four testers; ≤15 min induction; one unaided role task each |
 | NFR-05 keyboard accessibility | SRS + test plan | PENDING | Tab, Shift+Tab, Enter and Space across primary controls |
