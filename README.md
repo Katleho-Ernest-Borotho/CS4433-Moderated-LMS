@@ -48,5 +48,4 @@ No unmeasured coverage percentage or unperformed acceptance test is claimed.
 - `docs/phase-7-deployment/` — installation and release documents.
 - `docs/phase-8-maintenance/` — CR1 change impact and v1.1 regression.
 
-Do not put real learners' data or password-bearing backup files into this Git
-repository. The supplied tests should use fictional demonstration records.
+
