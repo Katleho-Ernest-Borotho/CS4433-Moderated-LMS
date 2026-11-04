@@ -1,8 +1,22 @@
 # Moderated Learning Management System
 
-An **offline Windows desktop application** for managing assignments, student submissions, marking and moderated results. Built in **C++17**, **Qt 6** and **SQLite**, with four permission-controlled user roles.
+[![Windows build and tests](https://github.com/Katleho-Ernest-Borotho/CS4433-Moderated-LMS/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Katleho-Ernest-Borotho/CS4433-Moderated-LMS/actions/workflows/ci.yml)
 
-**[Download Windows app](https://github.com/Katleho-Ernest-Borotho/CS4433-Moderated-LMS/releases/download/v1.1/ModeratedLMS_v1.1_windows_ucrt64.zip)** · **[Watch demonstration](https://github.com/Katleho-Ernest-Borotho/CS4433-Moderated-LMS/releases/download/v1.1/Video.Project.1.mp4)** · **[Read project report](https://github.com/Katleho-Ernest-Borotho/CS4433-Moderated-LMS/releases/download/v1.1/Report_202322762.docx)** · **[All releases](https://github.com/Katleho-Ernest-Borotho/CS4433-Moderated-LMS/releases)**
+An **offline Windows desktop application** for managing assignments, student submissions, marking and moderated results. Built with **C++17**, **Qt 6** and **SQLite**, with four permission-controlled user roles.
+
+## Get started
+
+| What you need | Link |
+| --- | --- |
+| **Run the LMS on Windows** | **[Download v1.1 portable ZIP](https://github.com/Katleho-Ernest-Borotho/CS4433-Moderated-LMS/releases/download/v1.1/ModeratedLMS_v1.1_windows_ucrt64.zip)** |
+| **See the system in action** | [Watch the 10-minute presentation and demonstration](https://github.com/Katleho-Ernest-Borotho/CS4433-Moderated-LMS/releases/download/v1.1/Video.Project.1.mp4) |
+| **Read the project report** | [Download Report_202322762.docx](https://github.com/Katleho-Ernest-Borotho/CS4433-Moderated-LMS/releases/download/v1.1/Report_202322762.docx) |
+| **View installation and usage instructions** | [Four-role user manual](docs/phase-7-deployment/ROLE_USER_MANUAL_V11.md) |
+| **See all versioned downloads** | [GitHub Releases — v1.0 and v1.1](https://github.com/Katleho-Ernest-Borotho/CS4433-Moderated-LMS/releases) |
+
+**Current build: v1.1 (Windows release candidate).** Download the ZIP, extract the entire folder and launch `ModeratedLMS.exe`. The complete installation procedure is below; no compiler or Internet connection is needed to use the packaged program.
+
+The downloads are attached to GitHub **Releases**, not GitHub **Packages**. Both published versions are identified as pre-releases while formal deployment acceptance is outstanding. The repository sidebar may therefore show only version tags; use the release link above to access the actual files.
 
 ## Features
 
