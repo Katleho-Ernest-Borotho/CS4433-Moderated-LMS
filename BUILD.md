@@ -1,270 +1,60 @@
-# Build and Test the Moderated LMS
+# Build and test
 
-Development platform: MSYS2 UCRT64, GCC C++17, Qt 6 Widgets, SQLite, libsodium, CMake, Ninja and GoogleTest.
+## Development environment
 
-## Update the source code
+Build on Windows using **MSYS2 UCRT64**. Required components: GCC with C++17 support, CMake, Ninja, Qt 6 Widgets, SQLite, libsodium, pkg-config and GoogleTest.
 
-Close the running LMS application. Open **Git Bash**:
-
-```bash
-cd /c/Users/borot/OneDrive/Desktop/CS4433-Moderated-LMS
-git switch feature/phase4-implementation
-git pull --ff-only origin feature/phase4-implementation
-```
-
-## Build and run the tests
-
-Open **MSYS2 UCRT64**:
+From the MSYS2 **UCRT64** terminal:
 
 ```bash
-cd /c/Users/borot/OneDrive/Desktop/CS4433-Moderated-LMS
-cmake -S . -B /c/dev/cs4433-lms-build -G Ninja -DCMAKE_BUILD_TYPE=Debug
-cmake --build /c/dev/cs4433-lms-build
-ctest --test-dir /c/dev/cs4433-lms-build --output-on-failure
-/c/dev/cs4433-lms-build/ModeratedLMS.exe
+pacman -Syu
+pacman -S --needed \
+  mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-cmake \
+  mingw-w64-ucrt-x86_64-ninja mingw-w64-ucrt-x86_64-pkgconf \
+  mingw-w64-ucrt-x86_64-qt6-base mingw-w64-ucrt-x86_64-sqlite3 \
+  mingw-w64-ucrt-x86_64-libsodium mingw-w64-ucrt-x86_64-gtest git
 ```
 
-The source suite now contains 55 GoogleTest cases. This is a target, not a claim that the current commit has passed on the user's laptop. Report the **first error** from the build output if it fails.
+If the system upgrade requests a restart of the terminal, reopen UCRT64 before proceeding.
 
-## Existing data
+## Compile, test and launch
 
-The SQLite database remains under the Windows local application-data directory for `CS4433/ModeratedLMS`. Its original **12-table approved Week 3 schema is unchanged**; do not delete the database to update the program. The initial Administrator, Student, Lecturer and existing course records should remain in place.
-
-## Readable deadline display
-
-The assignment grid presents deadlines in the computer's local timezone, for example `31 Oct 2026, 03:22`, rather than raw `2026-10-31T01:22:48Z` values. Stored deadline timestamps remain in UTC for calculations. Existing original timestamps keep their exact seconds, available in the grid's hover tooltip. When creating a new deadline with the minute-based editor, seconds are set to `00`.
-
-## Paired workflow: first submission (FR-11) and versioned resubmission (FR-12)
-
-1. As Administrator, ensure a Lecturer is assigned to CS4433 and a Student is enrolled.
-2. As that Lecturer, create an assignment and choose a future deadline.
-3. As the Student, open **Assignments and extensions**, select CS4433 and choose the assignment under **Submit assignment**.
-4. Type an answer, choose an optional PDF, DOCX or TXT file, or provide only a file. Attachments must be between 1 byte and 10 MiB. Click **Submit / Resubmit**.
-5. Confirm that **Version 1** appears in the Student's submission-history grid.
-6. Before the effective deadline, change the response and submit again; confirm **Version 2** is listed while **Version 1** remains.
-7. Close and reopen the app to verify both versions persist in SQLite. The Student's saved text can be reviewed in the history panel. Uploaded attachments are stored locally and listed as **Saved**; opening/downloading them from the GUI is not implemented yet.
-
-**Deadline rules:** The first submission is accepted even after the effective deadline, and is classified as Late. A resubmission/replacement is permitted only on or before the individual effective deadline. A lecturer's extension may permit a later replacement; previous versions remain immutable. The late-penalty calculation and marking module will be implemented in subsequent checkpoints.
-
-## Security and content storage
-
-- Service methods authenticate the Student role and check that the Student is actively enrolled in the assignment's course.
-- A Student can view only their own submission-version history.
-- SQL statements are parameterised and the submission and version rows are committed in one SQLite transaction.
-- Files are copied to a private local storage directory, with random opaque names rather than the originally supplied filename.
-- The application checks the attachment extension (PDF, DOCX or TXT) and the size limit; file-content validation and virus scanning are not yet implemented.
-- Attachment file operations and SQLite transactions cannot be made fully atomic as one filesystem/SQL transaction. The implementation attempts cleanup if the database write fails; crash-recovery and orphan-file reconciliation are still pending.
-- Use **demonstration data only** until backup/recovery and final security checks are complete.
-
-## Remaining core requirements
-
-Late penalty/marking (FR-13/FR-14), moderation and release (FR-15/FR-17), and complete mark-change auditing (FR-18) are not yet implemented. Full file-viewing, user-account editing, and some additional administrative functions also remain.
-
-
-## Paired implementation checkpoint: Late penalties + lecturer marking
-
-This checkpoint adds the **CommencedDayPenaltyPolicy** and a **Marking** tab for
-lecturers. It does not implement HoD approval or result release.
-
-### Marking walkthrough
-
-1. Sign in as the Lecturer assigned to the course and open **Marking**.
-2. Choose the assigned course and an assignment. The table lists students who
-   have submitted work and the newest version of each submission.
-3. Select a student to inspect the newest typed text. If the version contains an
-   attachment, use **Save latest attached file...** to save a review copy.
-4. Enter the earned mark (from zero to the assignment maximum) and written feedback,
-   then choose **Save provisional mark**.
-5. The screen shows the earned mark, calculated late penalty and provisional final
-   mark. These figures remain **hidden from students**.
-6. To revise an existing mark or re-mark a more recent student version, enter a
-   **revision reason**. Changed earned, penalty and final values are each recorded
-   as separate audit events in the same SQLite transaction.
-7. Log in as the Student. The Student still sees submissions and deadline details,
-   but **not** the unreleased mark or feedback.
-
-### Exact penalty boundaries
-
-* On time, or exactly at the effective deadline: zero penalty.
-* Late by (0, 24] hours: deduct 10% of the **maximum mark**.
-* Late by (24, 48] hours: deduct 20% of the maximum mark.
-* Late by (48, 72] hours: deduct 30% of the maximum mark.
-* More than 72 hours late: final mark is zero.
-
-For the first three late windows, the result is clamped to zero if the deduction
-exceeds the earned mark. Marks are rounded to two decimal places. An individual
-extension changes the effective deadline used in this computation.
-
-### Re-marking after resubmission
-
-If a Student submits a new version before their effective deadline, the earlier
-mark is stale: a Lecturer must assess the **latest** version again before further
-moderation. The service rejects marking a version that has been superseded.
-Revisions to existing numerical marks and their audit events are written in one
-database transaction. Existing version-history records are retained.
-
-### Verification
-
-Run the same Git Bash pull / MSYS2 UCRT64 CMake, build, CTest and launch commands
-shown above. The suite now contains **70 test cases** including penalty boundaries,
-valid and invalid marks, lecturer authorisation, file review, provisional status,
-audit log revisions and resubmission re-marking.
-
-This commit is committed to GitHub but has not yet been built on the development
-machine. Do **not** treat the test target as a confirmed test result until CTest
-reports success.
-
-### Not implemented yet
-
-HoD moderation, approval, mark adjustment by HoD, release of marks, and released
-results in the Student view are still pending. Do not use real students' marks
-until these and final backup/security checks are complete.
-
-
-## Paired checkpoint: HoD moderation + Student result release
-
-This version adds the HoD moderation/approval workflow (FR-15/FR-18) and
-controlled, individual result release (FR-16/FR-17), following the Week 3 design.
-
-### Update and build
-
-Close the LMS program. In **Git Bash**:
+Inside a fresh checkout of this repository:
 
 ```bash
-cd /c/Users/borot/OneDrive/Desktop/CS4433-Moderated-LMS
-git switch feature/phase4-implementation
-git pull --ff-only origin feature/phase4-implementation
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug
+cmake --build build
+ctest --test-dir build --output-on-failure
+./build/ModeratedLMS.exe
 ```
 
-In **MSYS2 UCRT64**:
+CMake places `lms_schema.sql` beside the executable in the build folder. The SQLite database and attachments are stored in Windows Local AppData, **not** in the source checkout. Use a separate Windows user profile for test records.
+
+The recorded v1.1 baseline passed **128 GoogleTest/CTest cases**. Always rerun the tests after local changes.
+
+## Portable Windows package
+
+In MSYS2 UCRT64, run:
 
 ```bash
-cd /c/Users/borot/OneDrive/Desktop/CS4433-Moderated-LMS
-cmake -S . -B /c/dev/cs4433-lms-build -G Ninja -DCMAKE_BUILD_TYPE=Debug
-cmake --build /c/dev/cs4433-lms-build
-ctest --test-dir /c/dev/cs4433-lms-build --output-on-failure
-/c/dev/cs4433-lms-build/ModeratedLMS.exe
+bash scripts/package_windows_ucrt64.sh
 ```
 
-The source tree contains **86 tests**, including 16 HoD moderation/release
-cases; the new code must still be built and tested on the development laptop.
+The script creates a timestamped portable Release folder containing the application, standalone Restore tool, schema, Qt plugins, runtime DLLs and provenance metadata. Keep the entire folder intact and test it outside the development environment.
 
-### End-to-end demonstration
+For people who only want to run the LMS, use the [downloadable v1.1 ZIP](https://github.com/Katleho-Ernest-Borotho/CS4433-Moderated-LMS/releases/download/v1.1/ModeratedLMS_v1.1_windows_ucrt64.zip) instead.
 
-1. Sign in as Administrator. If no HoD exists, create a temporary
-   **Head of Department** account through User Management. In Academic Management,
-   assign the account to the department containing CS4433. Confirm that a Lecturer
-   is assigned to CS4433 and a Student is enrolled.
-2. For a prompt demonstration, sign in as the Lecturer, open Assignments and
-   Extensions and create a **new demonstration assignment whose deadline was one
-   or two hours ago**. Do not change the deadline on the existing extended Lab 1.
-3. Sign in as the Student, submit text or a file to this new assignment. The first
-   submission is accepted late; a resubmission after the effective deadline is
-   refused. The application keeps the older submission-version records.
-4. Sign in as the Lecturer, open **Marking**, choose the new assignment and Student,
-   enter an earned mark and written feedback, then save the provisional result.
-5. Sign in as the HoD, open **Results and moderation**, select the submitted result
-   and review the latest text/attachment, lecturer feedback, automatic late
-   penalty and effective deadline.
-6. Select **Approve moderation**, optionally checking **Adjust lecturer's earned
-   mark** and entering a revision reason if making a change. An adjusted earned
-   mark automatically recalculates the late-penalty outcome and generates
-   per-field audit records where numerical values changed. Approval by itself
-   **does not** expose the result to the Student.
-7. Select the approved row and then **Release approved result**. Release is a
-   separate, confirmed action.
-8. Sign in as the Student, open **Results and moderation**, and verify that the
-   released result now displays the mark, late-penalty deduction and feedback.
-   A different Student sees only their own released results.
+## Optional CMake settings
 
-### Safeguards
+| Setting | Purpose |
+| --- | --- |
+| `-DBUILD_TESTING=OFF` | Build without automated tests |
+| `-DLMS_ENABLE_COVERAGE=ON` | Enable GNU code-coverage instrumentation |
+| `-DLMS_ENABLE_NFR_BENCHMARK=ON` | Build the isolated 800-account login benchmark |
+| `-DLMS_ENABLE_LOCAL_ADMIN_RECOVERY=ON` | Compile the authorised local Administrator recovery utility |
 
-- Only an active HoD assigned to the course's department may review/approve/release.
-- Both approval and release require the student's **effective deadline to have
-  passed**, taking individual extensions into account.
-- Approval/release rejects a stale mark if the Student's latest submission version
-  has not been assessed.
-- Mark changes and their audit events run inside one SQLite transaction; an
-  audit-write error rolls back the mark and approval.
-- Approval and release are separate transactions; release rejects unapproved
-  results and cannot be repeated.
-- Only the authenticated Student's own **approved and released** marks are visible.
-  Provisional and approved-but-unreleased marks remain hidden.
-- Lecturer marks already approved for moderation cannot be edited in the existing
-  marking workflow.
+Use `ctest --test-dir build -N` to list the discovered tests.
 
-**Important:** The previously created Lab 1 has an extended deadline in the
-future. Attempting to moderate or release it now should display the deadline
-guard error. Use a new recently expired test assignment, as above.
+## Data protection
 
-The same twelve-table database schema is reused. Existing users, courses,
-submissions and marks must not be deleted to install this version.
-Backup/recovery, full acceptance testing, production security validation and
-remaining account-management enhancements must be addressed before using live
-student marks.
-
-## Phase 4 account-management checkpoint: three features together
-
-This batch completes three account operations with service-level Administrator
-authorisation and prepared SQLite statements. The existing twelve-table schema,
-user IDs, role assignments, course enrolments, submissions and released marks are
-not deleted or migrated.
-
-### 1. Rename an account
-
-In **Administrator → User management**, select a demonstration Student or Lecturer
-and choose **Rename selected**. Enter a new username (3–40 letters/digits/periods/
-underscores/hyphens). The selected row refreshes to the new name. The old name
-can no longer log in, but the new name works with the existing password.
-User ID and existing academic associations remain unchanged. Duplicate names,
-including different letter case, are rejected. The Administrator cannot rename
-their own currently signed-in account from this screen.
-
-### 2. Reactivate an account
-
-Select an **Inactive** demonstration account and click **Reactivate selected**.
-Confirm the dialog; its Status column becomes **Active**. Log out and verify
-that the account can sign in again using its original password. Repeated
-activation of an already active account is rejected. For an inactive account
-that needs new credentials, reset its password first or after reactivating it.
-
-### 3. Reset another user's password
-
-Select a demonstration user and click **Reset password**. Enter and confirm
-a new temporary password (12–1024 UTF-8 bytes). The previous password should
-be refused on the next login; the new one should succeed. Existing stored
-password hashes are replaced with new salted hashes through libsodium.
-Already issued sessions are invalidated by credential-hash revalidation.
-An Administrator cannot reset their own currently signed-in account via this
-screen. Passwords are never printed to the terminal or stored in plaintext.
-
-### Update and verification (Windows)
-
-Close the LMS first. In **Git Bash**:
-
-```bash
-cd /c/Users/borot/OneDrive/Desktop/CS4433-Moderated-LMS
-git switch feature/phase4-implementation
-git pull --ff-only origin feature/phase4-implementation
-```
-
-Then in **MSYS2 UCRT64**:
-
-```bash
-cd /c/Users/borot/OneDrive/Desktop/CS4433-Moderated-LMS
-cmake -S . -B /c/dev/cs4433-lms-build -G Ninja -DCMAKE_BUILD_TYPE=Debug
-cmake --build /c/dev/cs4433-lms-build
-ctest --test-dir /c/dev/cs4433-lms-build --output-on-failure
-/c/dev/cs4433-lms-build/ModeratedLMS.exe
-```
-
-The suite now includes **101 test cases**. This is the expected test count
-until run on the development computer; it is not a claim of a passing build.
-Save the first CMake/compiler error if the build fails.
-
-Security notes: only an authenticated Administrator can use the above service
-operations; inactive users cannot log in; credentials are stored as password
-hashes; existing sessions reject changed usernames or password hashes. Use
-temporary accounts and passwords for this demonstration. Operational recovery,
-full role editing, periodic backups and production readiness still need
-separate review and testing.
+Do not delete or replace `lms.sqlite3` to upgrade the application. **Create and verify a full backup before any migration or restore.** Stop the LMS before using `ModeratedLMSRestore.exe`. See [backup and restore operations](OPERATIONS_BACKUP_REPORTS.md), the [role manual](docs/phase-7-deployment/ROLE_USER_MANUAL_V11.md), and the [release procedure](docs/RELEASE_GUIDE.md).

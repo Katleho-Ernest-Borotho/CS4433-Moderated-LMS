@@ -1,0 +1,177 @@
+name: Publish Windows release candidate (v1.0 or v1.1)
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Which tested source baseline should be packaged?"
+        required: true
+        type: choice
+        options:
+          - v1.0
+          - v1.1
+
+permissions:
+  contents: write
+
+concurrency:
+  group: moderated-lms-release-${{ inputs.version }}
+  cancel-in-progress: false
+
+jobs:
+  windows-release:
+    name: Verify, package and publish ${{ inputs.version }}
+    runs-on: windows-latest
+    timeout-minutes: 75
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - name: Select the immutable release source and required test count
+        id: select
+        shell: pwsh
+        run: |
+          switch ("${{ inputs.version }}") {
+            "v1.0" {
+              $sha = "0f5ae44003fbea1583595a1afc8b59a376b2e64c"
+              $tests = 115
+            }
+            "v1.1" {
+              $sha = "adbd8e194fc0856e9e478880d385a1b1c14d0a5e"
+              $tests = 128
+            }
+            default { throw "Unsupported release version" }
+          }
+          "sha=$sha" >> $env:GITHUB_OUTPUT
+          "tests=$tests" >> $env:GITHUB_OUTPUT
+          Write-Host "Version: ${{ inputs.version }}; source commit: $sha; expected tests: $tests"
+
+      - name: Check out exact release source (not the latest branch head)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.select.outputs.sha }}
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Install Windows UCRT64 build and packaging tools
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: >-
+            mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-cmake
+            mingw-w64-ucrt-x86_64-ninja
+            mingw-w64-ucrt-x86_64-pkgconf
+            mingw-w64-ucrt-x86_64-qt6-base
+            mingw-w64-ucrt-x86_64-sqlite3
+            mingw-w64-ucrt-x86_64-libsodium
+            mingw-w64-ucrt-x86_64-gtest
+            git
+            zip
+
+      - name: Confirm source commit
+        run: |
+          set -euo pipefail
+          actual="$(git rev-parse HEAD)"
+          expected="${{ steps.select.outputs.sha }}"
+          [[ "$actual" == "$expected" ]] || { echo "Wrong source commit: $actual"; exit 1; }
+
+      - name: Configure and build regression tests
+        run: |
+          cmake -S . -B build/release-gate -G Ninja \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DLMS_ENABLE_COVERAGE=OFF \
+            -DLMS_ENABLE_LOCAL_ADMIN_RECOVERY=OFF
+          cmake --build build/release-gate --parallel 2
+
+      - name: Execute and count regression tests
+        run: |
+          set -euo pipefail
+          actual="$(ctest --test-dir build/release-gate -N | sed -n 's/^Total Tests: *//p' | tail -n 1 | tr -d '\r')"
+          expected="${{ steps.select.outputs.tests }}"
+          echo "Detected $actual tests (required $expected)"
+          [[ "$actual" == "$expected" ]] || { echo "Unexpected test count"; exit 1; }
+          ctest --test-dir build/release-gate --output-on-failure --output-junit build/release-gate/release-tests.xml
+
+      - name: Create portable Windows Release folder (no school data)
+        run: |
+          set -euo pipefail
+          bash scripts/package_windows_ucrt64.sh "$PWD/dist"
+
+      - name: Zip complete deployment and record checksum/provenance
+        run: |
+          set -euo pipefail
+          mkdir -p release-assets
+          mapfile -t packages < <(find dist -mindepth 1 -maxdepth 1 -type d)
+          [[ "${#packages[@]}" -eq 1 ]] || { echo "Expected exactly one deployment folder"; exit 1; }
+          folder="${packages[0]}"
+          [[ -s "$folder/ModeratedLMS.exe" && -s "$folder/ModeratedLMSRestore.exe" ]] || { echo "Missing release executable"; exit 1; }
+          [[ -s "$folder/lms_schema.sql" ]] || { echo "Missing schema"; exit 1; }
+          find "$folder" -type f -iname qwindows.dll | grep -q . || { echo "Missing Qt platform plugin"; exit 1; }
+          cat > "$folder/RELEASE_PROVENANCE.txt" <<EOF
+          Version: ${{ inputs.version }}
+          Source commit: ${{ steps.select.outputs.sha }}
+          Build: GitHub Actions Windows MSYS2 UCRT64 / CMake Release
+          Automated regression tests: ${{ steps.select.outputs.tests }} passing (release gate)
+          Status: Pre-release for academic demonstration, not a signed installer
+          Notes: Package contains NO real student databases, attachments or credentials.
+          EOF
+          name="$(basename "$folder")"
+          (
+            cd dist
+            zip -qr "../release-assets/ModeratedLMS_${{ inputs.version }}_windows_ucrt64.zip" "$name"
+          )
+          (
+            cd release-assets
+            sha256sum "ModeratedLMS_${{ inputs.version }}_windows_ucrt64.zip" > SHA256SUMS.txt
+          )
+          ls -lh release-assets/
+
+      - name: Save downloadable workflow build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ModeratedLMS-${{ inputs.version }}-windows-ucrt64
+          path: release-assets/*
+          if-no-files-found: error
+
+      - name: Publish pre-release, source tag and Windows ZIP
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.version }}
+          SHA: ${{ steps.select.outputs.sha }}
+          TEST_COUNT: ${{ steps.select.outputs.tests }}
+        run: |
+          gh release view $env:TAG --repo "${{ github.repository }}" --json tagName *> $null
+          if ($LASTEXITCODE -eq 0) {
+            throw "Release $env:TAG already exists. Never overwrite a previously published package."
+          }
+          $heading = "Moderated LMS $env:TAG - Windows Release Candidate"
+          if ($env:TAG -eq "v1.0") {
+            $changes = "Original offline four-role LMS: administration, submissions, late penalties, lecturer marking, HoD moderation/release, mark audits and backups."
+          } else {
+            $changes = "Adds CR1 whole-class assignment deadline extensions and individual-extension precedence. Existing v1.0 databases migrate on first start. Make a verified v1.0 backup first."
+          }
+          @"
+          # $heading
+
+          $changes
+
+          - Source revision: $env:SHA
+          - Regression test gate: $env:TEST_COUNT automated cases passed during this package build.
+          - Download the Windows UCRT64 ZIP below and extract the entire folder.
+          - Run ModeratedLMS.exe on a Windows computer; keep lms_schema.sql, plugins and DLLs alongside it.
+          - The ZIP contains RELEASE_PROVENANCE.txt. SHA256SUMS.txt is provided as a separate release asset.
+          - No school data, learner attachments or private credentials are included.
+          - This is a pre-release for academic demonstration, not a signed production installer.
+          - Supervisor sign-off, negative-case acceptance and third-party redistribution review are still pending.
+          - For v1.1, make a verified backup before opening an existing v1.0 database.
+          "@ | Set-Content -Encoding utf8 RELEASE_NOTES.txt
+          $archive = "release-assets/ModeratedLMS_$env:TAG" + "_windows_ucrt64.zip"
+          gh release create $env:TAG $archive "release-assets/SHA256SUMS.txt" `
+            --repo "${{ github.repository }}" `
+            --target $env:SHA `
+            --title $heading `
+            --notes-file RELEASE_NOTES.txt `
+            --prerelease
