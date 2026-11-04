@@ -21,8 +21,8 @@ bash scripts/package_windows_ucrt64.sh
 | Qt Windows platform plugin | `platforms/qwindows.dll` included | PASS |
 | External runtime libraries | Includes GCC runtime, `libsqlite3-0.dll`, `libsodium-26.dll`, and transitive DLLs | PASS |
 | Output location | `ModeratedLMS_v1_1_20261102_023504` | CREATED |
-| Independent Windows launch and requested CR1 checks | Developer subsequently reported all requested checks worked on second laptop | **USER-REPORTED PASS** |
-| Verified backup on target | Developer subsequently reported the requested backup verification worked | **USER-REPORTED PASS** |
+| Independent Windows launch and requested CR1 checks | Developer subsequently reported all requested checks worked on second laptop | **DEVELOPER-REPORTED PASS** |
+| Verified backup on target | Developer subsequently reported the requested backup verification worked | **DEVELOPER-REPORTED PASS** |
 
 Generated folder:
 
