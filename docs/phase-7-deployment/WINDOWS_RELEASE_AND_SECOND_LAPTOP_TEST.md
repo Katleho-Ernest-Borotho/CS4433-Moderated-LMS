@@ -93,7 +93,7 @@ A normal first launch creates its data directory using
 - **Qt platform plugin error:** Verify that `qwindows.dll` remains inside
   the correct Qt `platforms` plugin subfolder, and the Qt DLL versions match.
 - **No schema:** Restore `lms_schema.sql` next to the EXE from the
-  deployment package; never replace the user's existing database.
+  deployment package; never replace the existing local database.
 - **Different data after transferring:** This is expected. The app stores
   data in per-user Windows Local AppData, not beside the EXE. For a clean
   deployment test, keep synthetic data only.
