@@ -18,7 +18,7 @@
 | Qt deployment | `windeployqt6` DLLs/plugins included |
 | License/signing | Not yet approved/signed for general distribution |
 
-**Provenance:** These values were read from the actual user-supplied
+**Provenance:** These values were read from the actual developer-provided
 `BUILD_PROVENANCE.txt` in the generated package, not inferred from the
 current branch head.
 
@@ -30,12 +30,12 @@ current branch head.
 | v1.0 measured business-logic line coverage | 484/524 lines, 92% | PASS (70% requirement) |
 | NFR-01 performance | 20/20 logins below 2s, 800 Student records | PASS |
 | Phase 6 cppcheck | 29/29 source files, no findings in selected categories | PASS within selected scan configuration |
-| v1.0 second Windows PC | User confirmed setup, academic workflow, persistence, offline operation | USER-REPORTED PASS |
+| v1.0 second Windows PC | Developer confirmed setup, academic workflow, persistence, offline operation | DEVELOPER-REPORTED PASS |
 | CR1 implementation regression | 128/128 tests passed, 53.26s | PASS |
 | v1.1 Windows CI for packaged source commit | Successful GitHub Actions run | PASS |
 | v1.1 Release build / DLL packaging | Successful `[37/37]` Release build, Qt/plugins and runtime DLLs copied | PASS |
 | v1.1 packaged commit provenance | Verified from `BUILD_PROVENANCE.txt` | PASS |
-| v1.1 second Windows PC | User reported all *requested* scenarios worked: offline launch, class extension, two Students' class due dates, longer individual due date, restart persistence, backup verification | USER-REPORTED PASS |
+| v1.1 second Windows PC | Developer reported all *requested* scenarios worked: offline launch, class extension, two Students' class due dates, longer individual due date, restart persistence, backup verification | DEVELOPER-REPORTED PASS |
 | Negative GUI cases, offline restore, existing v1.0 profile migration on second PC | Not individually documented with screenshots/results in this checkpoint | NEEDS SEPARATE EVIDENCE |
 | Final supervisor acceptance and redistribution licences | No approval recorded | PENDING |
 
@@ -96,6 +96,6 @@ extract an updated gcovr report if a v1.1 coverage figure is required.
 | Release decision | PENDING |
 
 **Release decision:** The main implementation and requested cross-device
-deployment checks are complete at the user-reported evidence level. This
+deployment checks are complete at the developer-reported evidence level. This
 record **does not** claim a completed formal sign-off or a published final
 release. No tag or public release has been created automatically.
