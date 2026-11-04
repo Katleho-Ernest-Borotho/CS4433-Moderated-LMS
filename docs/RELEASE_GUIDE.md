@@ -1,27 +1,35 @@
-# CS4433 — tagged Windows release candidates
+# Windows releases
 
-This repository uses an immutable-release workflow to publish the two assessed source baselines as **GitHub pre-releases**.
+Prebuilt Windows packages are available under [GitHub Releases](https://github.com/Katleho-Ernest-Borotho/CS4433-Moderated-LMS/releases). These are **portable release candidates**, not signed installers.
 
-| Tag | Source commit | Expected automated tests | Intended changes |
-|---|---|---:|---|
-| `v1.0` | `0f5ae44003fbea1583595a1afc8b59a376b2e64c` | 115 | Four-role moderated offline LMS |
-| `v1.1` | `adbd8e194fc0856e9e478880d385a1b1c14d0a5e` | 128 | CR1 whole-class assignment deadline extensions |
+## Published versions
 
-The v1.1 source SHA is the exact SHA recorded in the independently tested Windows package provenance. The v1.0 SHA is the preserved pre-CR1 source/documentation baseline; the original local v1.0 package did not record an exact SHA. Newly published Windows ZIPs are therefore **fresh CI builds**, not copies of the previously tested local folders.
+| Version | Source revision | Automated tests | Contents |
+| --- | --- | --- | --- |
+| [v1.1](https://github.com/Katleho-Ernest-Borotho/CS4433-Moderated-LMS/releases/tag/v1.1) | `adbd8e194fc0856e9e478880d385a1b1c14d0a5e` | 128/128 passed | Four-role LMS, whole-class deadline extensions, report and demonstration |
+| [v1.0](https://github.com/Katleho-Ernest-Borotho/CS4433-Moderated-LMS/releases/tag/v1.0) | `0f5ae44003fbea1583595a1afc8b59a376b2e64c` | 115/115 passed | Original moderated assignment and result-release workflows |
 
-## Publishing
+### v1.1 downloads
 
-1. In the repository, click **Actions**.
-2. Select **Publish Windows release candidate (v1.0 or v1.1)**.
-3. Click **Run workflow** on `main`, choose `v1.0`, and run.
-4. Review the job: checkout SHA, build, expected CTest count, 100% passing tests, complete Qt/UCRT64 portable ZIP, checksum, release notes.
-5. Once it succeeds, run the same workflow for `v1.1`.
-6. Open **Releases** to see both versions with ZIP assets and **Tags** to see the immutable source snapshots.
+- **[Portable Windows application ZIP](https://github.com/Katleho-Ernest-Borotho/CS4433-Moderated-LMS/releases/download/v1.1/ModeratedLMS_v1.1_windows_ucrt64.zip)** — extract the whole folder and run `ModeratedLMS.exe`.
+- **[Project report (Word)](https://github.com/Katleho-Ernest-Borotho/CS4433-Moderated-LMS/releases/download/v1.1/Report_202322762.docx)** — design, implementation and verification summary.
+- **[Recorded presentation and walkthrough (MP4)](https://github.com/Katleho-Ernest-Borotho/CS4433-Moderated-LMS/releases/download/v1.1/Video.Project.1.mp4)** — a 10-minute 12-second demonstration.
+- **[SHA-256 checksums](https://github.com/Katleho-Ernest-Borotho/CS4433-Moderated-LMS/releases/download/v1.1/SHA256SUMS.txt)** — checksum for the application ZIP.
 
-The workflow uses a Windows GitHub runner to package the selected commit via that commit's own `scripts/package_windows_ucrt64.sh`, writes `RELEASE_PROVENANCE.txt`, archives an entire portable folder (not just an EXE), calculates SHA-256, and publishes as a **pre-release**. It refuses to replace an existing published release. **Do not rerun publication to try to overwrite a tag or artifact**.
+These files are **release assets**, not GitHub Packages. Because both versions are marked **pre-release**, GitHub may show only `2 tags` in the repository sidebar. The [Releases page](https://github.com/Katleho-Ernest-Borotho/CS4433-Moderated-LMS/releases) lists their full download assets.
 
-These are not signed installers. No school database, private accounts, live submissions or credentials should be bundled. Check Qt/MinGW/libsodium licence obligations and acceptance tests before treating a candidate as production-approved. School data lives under the per-user Windows application-data directory.
+For installation and usage, see the [main README](../README.md) and [role-based user manual](phase-7-deployment/ROLE_USER_MANUAL_V11.md).
 
-The GitHub **Packages** panel is not used: a desktop ZIP belongs under **Releases**. Source archives are automatically provided for each tag. The pre-release status is intentional because formal supervisor sign-off is not recorded.
+## Reproducible build and packaging
 
-[Release index](https://github.com/Katleho-Ernest-Borotho/CS4433-Moderated-LMS/releases) · [CI status](https://github.com/Katleho-Ernest-Borotho/CS4433-Moderated-LMS/actions)
+The release workflow is [`.github/workflows/publish-windows-release.yml`](../.github/workflows/publish-windows-release.yml). It selects an exact source commit, verifies the expected automated tests on Windows, builds the application using MSYS2 UCRT64 and CMake, bundles Qt/runtime dependencies, records provenance, creates a ZIP and calculates its SHA-256 checksum.
+
+The v1.0 and v1.1 release source snapshots are intentionally separate from the evolving `main` branch. Published packages are CI builds of those pinned commits, not exports of later source revisions.
+
+### Publishing a future version
+
+A new version requires its own tested source revision, tag, and release entry. The existing workflow is configured specifically for the published v1.0/v1.1 baselines and refuses to overwrite an already published release.
+
+The application does not bundle real students' databases, attachments or passwords. Backups and Windows account access require appropriate protection. Formal supervisory approval, some manual acceptance evidence and third-party licence review remain outstanding; do not present a release candidate as a production-approved deployment.
+
+[Browse releases](https://github.com/Katleho-Ernest-Borotho/CS4433-Moderated-LMS/releases) · [GitHub Actions](https://github.com/Katleho-Ernest-Borotho/CS4433-Moderated-LMS/actions) · [Build instructions](../BUILD.md)
