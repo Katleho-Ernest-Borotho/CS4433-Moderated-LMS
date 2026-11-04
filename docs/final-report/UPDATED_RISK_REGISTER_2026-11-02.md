@@ -16,7 +16,7 @@ Scales: likelihood L = 1–5; impact I = 1–5; **initial exposure = L × I**.
 | R8 | Project: loss/corruption of source, report or database | 2 | 5 | 10 | Student developer | GitHub source, release tags/assets, backup verification tests, manifest integrity | Independent offline restore still to be documented |
 | R9 | Project: Gate 2 delayed or design not accepted | 2 | 5 | 10 | Student developer | Week 3 detailed SDD and editable diagrams | Explicit supervisor Gate 2 approval not present in records |
 | R10 | Project: extra features create scope creep | 2 | 4 | 8 | Student developer | Single-PC offline scope maintained; CR1 limited to lecturer class extensions | Do not add functionality before submission |
-| R11 | Technical/deployment: package fails on independent PC | 2 | 3 | 6 | Student developer | v1.0/v1.1 Windows ZIPs; second-laptop launch and selected scenarios user-reported PASS | Negative GUI cases, upgrade and restore still unrecorded |
+| R11 | Technical/deployment: package fails on independent PC | 2 | 3 | 6 | Student developer | v1.0/v1.1 Windows ZIPs; second-laptop launch and selected scenarios developer-reported PASS | Negative GUI cases, upgrade and restore still unrecorded |
 
 ## Review conclusion
 Eleven risks are retained without altering their original scores. Controls are documented, but **mitigation is not equal to formal closure**. If a supervisor signs a Gate review, record its date, residual ratings, sign-off and any newly found defects separately. Do not invent historical ratings.
